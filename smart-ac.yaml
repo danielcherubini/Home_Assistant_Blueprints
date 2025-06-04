@@ -349,6 +349,10 @@ action:
         {% elif sf_target_hvac_mode == var_dry_hvac_mode %} {{ var_dry_preset }}
         {% else %} {{ var_comfort_preset }}
         {% endif %}
+      sf_target_temp: >
+        {% if sf_target_preset == var_dry_preset %} {{ (states('input_number.comfort_temp')|float(0) - 5) }}
+        {% else %} {{ states('input_number.comfort_temp')|float(0) }}
+
   - service: climate.set_preset_mode
     target:
       entity_id: !input second_floor_ac
@@ -358,7 +362,7 @@ action:
     target:
       entity_id: !input second_floor_ac
     data:
-      temperature: "{{ (states('input_number.comfort_temp')|float(0) - 5) if is_state(var_drying_active_helper_id, 'on') else states('input_number.comfort_temp')|float(0) }}"
+      temperature: "{{ sf_target_temp }}"
       hvac_mode: "{{ sf_target_hvac_mode }}"
       
   - variables:
@@ -369,6 +373,9 @@ action:
         {% elif ff_target_hvac_mode == var_dry_hvac_mode %} {{ var_dry_preset }}
         {% else %} {{ var_comfort_preset }}
         {% endif %}
+      ff_target_temp: >
+        {% if ff_target_preset == var_dry_preset %} {{ (states('input_number.comfort_temp')|float(0) - 5) }}
+        {% else %} {{ (states('input_number.comfort_temp')|float(0) + var_fourth_floor_temp_diff|float(0))|round(1) }}
   - service: climate.set_preset_mode
     target:
       entity_id: !input fourth_floor_ac
@@ -378,5 +385,5 @@ action:
     target:
       entity_id: !input fourth_floor_ac
     data:
-      temperature: "{{ (states('input_number.comfort_temp')|float(0) - 5) if is_state(var_drying_active_helper_id, 'on') else (states('input_number.comfort_temp')|float(0) + var_fourth_floor_temp_diff|float(0))|round(1) }}"
+      temperature: "{{ ff_target_temp }}" 
       hvac_mode: "{{ ff_target_hvac_mode }}"
