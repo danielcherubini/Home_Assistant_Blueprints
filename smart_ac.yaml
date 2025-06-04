@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v5.1 - Temp Fix)
+  name: Smart AC Control with Humidity Logic (v5.2 - Temp Fix)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
