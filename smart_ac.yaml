@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v5.2 - Temp Fix)
+  name: Smart AC Control with Humidity Logic (v5.3 - Dry Mode Fix)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
@@ -33,6 +33,16 @@ blueprint:
           step: 0.1
           mode: box
       default: 0.2
+    dry_mode_temperature_difference:
+      name: Dry Hysteresis (°C)
+      description: Temperature difference for "dry" mode.
+      selector:
+        number:
+          min: 0.1
+          max: 6.0
+          step: 0.1
+          mode: box
+      default: 1.0
     fourth_floor_temperature_difference:
       name: 4th Floor Temperature Difference (°C)
       description: Temperature difference for the 4th floor target relative to comfort temp.
@@ -200,6 +210,7 @@ action:
       var_heating_hysteresis: !input heating_hysteresis
       var_cooling_hysteresis: !input cooling_hysteresis
       var_comfort_hysteresis: !input comfort_hysteresis
+      var_dry_mode_temp_diff: !input dry_mode_temperature_difference
       var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
 
       # Entity ID inputs from blueprint - aliased for reliable use in templates
@@ -350,7 +361,7 @@ action:
         {% else %} {{ var_comfort_preset }}
         {% endif %}
       sf_target_temp: >
-        {% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - 5) }}
+        {% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff) }}
         {% else %} {{ states('input_number.comfort_temp')|float(0) }}
         {% endif %}
   - service: climate.set_preset_mode
@@ -374,7 +385,7 @@ action:
         {% else %} {{ var_comfort_preset }}
         {% endif %}
       ff_target_temp: >
-        {% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - 5) }}
+        {% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff) }}
         {% else %} {{ (states('input_number.comfort_temp')|float(0) + var_fourth_floor_temp_diff|float(0))|round(1) }}
         {% endif %}
   - service: climate.set_preset_mode
