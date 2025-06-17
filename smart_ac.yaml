@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v6.0 - Removing Dead Comfort Mode)
+  name: Smart AC Control with Humidity Logic (v6.1 - Removing Dead Comfort Mode)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
