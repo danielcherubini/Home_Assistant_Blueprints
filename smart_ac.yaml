@@ -373,7 +373,7 @@ action:
         {% else %} {{ var_comfort_preset }}
         {% endif %}
       sf_target_temp: >
-        {% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff_2nd_floor) }}
+        {% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) + var_dry_mode_temp_diff_2nd_floor) }}
         {% else %} {{ states('input_number.comfort_temp')|float(0) }}
         {% endif %}
   - service: climate.set_preset_mode
