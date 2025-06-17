@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v5.4 - Dry Mode Fix)
+  name: Smart AC Control with Humidity Logic (v5.5 - Fixing Maths)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
@@ -38,7 +38,7 @@ blueprint:
       description: Temperature difference for "dry" mode.
       selector:
         number:
-          min: 0.0
+          min: -6.0
           max: 6.0
           step: 0.1
           mode: box
@@ -48,7 +48,7 @@ blueprint:
       description: Temperature difference for "dry" mode.
       selector:
         number:
-          min: 0.0
+          min: -6.0
           max: 6.0
           step: 0.1
           mode: box
@@ -398,8 +398,8 @@ action:
         {% else %} {{ var_comfort_preset }}
         {% endif %}
       ff_target_temp: >
-        {% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff_4th_floor) }}
-        {% else %} {{ (states('input_number.comfort_temp')|float(0) + var_fourth_floor_temp_diff|float(0))|round(1) }}
+        {% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) + (var_dry_mode_temp_diff_4th_floor + var_fourth_floor_temp_diff)) }}
+        {% else %} {{ (states('input_number.comfort_temp')|float(0) + var_fourth_floor_temp_diff) }}
         {% endif %}
   - service: climate.set_preset_mode
     target:
