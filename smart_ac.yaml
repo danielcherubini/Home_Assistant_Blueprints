@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v5.5 - Fixing Maths)
+  name: Smart AC Control with Humidity Logic (v6.0 - Removing Dead Comfort Mode)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
@@ -306,19 +306,19 @@ action:
     default: []
 
   - choose: # Determine HVAC modes for input_text helpers
-      - conditions:
-          - condition: template
-            value_template: "{{ temp_diff is not none and temp_diff >= (0 - var_comfort_hysteresis|float(0)) and temp_diff <= var_comfort_hysteresis|float(0) }}"
-        sequence:
-          - service: input_text.set_value
-            target: { entity_id: !input second_floor_current_hvac_mode_helper }
-            data:
-              value: "{{ var_comfort_mode }}"
-          - service: input_text.set_value
-            target: { entity_id: !input fourth_floor_current_hvac_mode_helper }
-            data:
-              value: "{{ var_comfort_mode }}"
-        alias: "Set Comfort/Dry HVAC Mode"
+      # - conditions:
+      #     - condition: template
+      #       value_template: "{{ temp_diff is not none and temp_diff >= (0 - var_comfort_hysteresis|float(0)) and temp_diff <= var_comfort_hysteresis|float(0) }}"
+      #   sequence:
+      #     - service: input_text.set_value
+      #       target: { entity_id: !input second_floor_current_hvac_mode_helper }
+      #       data:
+      #         value: "{{ var_comfort_mode }}"
+      #     - service: input_text.set_value
+      #       target: { entity_id: !input fourth_floor_current_hvac_mode_helper }
+      #       data:
+      #         value: "{{ var_comfort_mode }}"
+      #   alias: "Set Comfort/Dry HVAC Mode"
       - conditions:
           - condition: template
             value_template: "{{ heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) < heating_temp_trigger }}"
