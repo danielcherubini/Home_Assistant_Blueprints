@@ -357,11 +357,11 @@ action:
       - service: input_text.set_value
         target: { entity_id: !input second_floor_current_hvac_mode_helper }
         data:
-          value: "{{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_comfort_mode }}"
+          value: "{{ var_comfort_mode }}"
       - service: input_text.set_value
         target: { entity_id: !input fourth_floor_current_hvac_mode_helper }
         data:
-          value: "{{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_comfort_mode }}"
+          value: "{{ var_comfort_mode }}"
 
   # 2nd Floor
   - variables:
