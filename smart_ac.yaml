@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v5.3 - Dry Mode Fix)
+  name: Smart AC Control with Humidity Logic (v5.4 - Dry Mode Fix)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
@@ -33,12 +33,22 @@ blueprint:
           step: 0.1
           mode: box
       default: 0.2
-    dry_mode_temperature_difference:
-      name: Dry Hysteresis (°C)
+    dry_mode_temperature_difference_2nd_floor:
+      name: Dry Difference 2nd Floor (°C)
       description: Temperature difference for "dry" mode.
       selector:
         number:
-          min: 0.1
+          min: 0.0
+          max: 6.0
+          step: 0.1
+          mode: box
+      default: 1.0
+    dry_mode_temperature_difference_4th_floor:
+      name: Dry Difference 4th Floor (°C)
+      description: Temperature difference for "dry" mode.
+      selector:
+        number:
+          min: 0.0
           max: 6.0
           step: 0.1
           mode: box
@@ -210,7 +220,8 @@ action:
       var_heating_hysteresis: !input heating_hysteresis
       var_cooling_hysteresis: !input cooling_hysteresis
       var_comfort_hysteresis: !input comfort_hysteresis
-      var_dry_mode_temp_diff: !input dry_mode_temperature_difference
+      var_dry_mode_temp_diff_2nd_floor: !input dry_mode_temperature_difference_2nd_floor
+      var_dry_mode_temp_diff_4th_floor: !input dry_mode_temperature_difference_4th_floor
       var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
 
       # Entity ID inputs from blueprint - aliased for reliable use in templates
@@ -352,6 +363,7 @@ action:
         data:
           value: "{{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_comfort_mode }}"
 
+  # 2nd Floor
   - variables:
       sf_target_hvac_mode: "{{ states(var_sf_hvac_mode_helper_id) }}"
       sf_target_preset: >
@@ -361,7 +373,7 @@ action:
         {% else %} {{ var_comfort_preset }}
         {% endif %}
       sf_target_temp: >
-        {% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff) }}
+        {% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff_2nd_floor) }}
         {% else %} {{ states('input_number.comfort_temp')|float(0) }}
         {% endif %}
   - service: climate.set_preset_mode
@@ -376,6 +388,7 @@ action:
       temperature: "{{ sf_target_temp }}"
       hvac_mode: "{{ sf_target_hvac_mode }}"
       
+  # 4th Floor
   - variables:
       ff_target_hvac_mode: "{{ states(var_ff_hvac_mode_helper_id) }}"
       ff_target_preset: >
@@ -385,7 +398,7 @@ action:
         {% else %} {{ var_comfort_preset }}
         {% endif %}
       ff_target_temp: >
-        {% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff) }}
+        {% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states('input_number.comfort_temp')|float(0) - var_dry_mode_temp_diff_4th_floor) }}
         {% else %} {{ (states('input_number.comfort_temp')|float(0) + var_fourth_floor_temp_diff|float(0))|round(1) }}
         {% endif %}
   - service: climate.set_preset_mode
