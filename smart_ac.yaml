@@ -2,6 +2,7 @@ blueprint:
   name: Smart AC Control with Humidity Logic (v6.5 - Fourth Floor Dry)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
+  source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
   input:
     heating_hysteresis:
       name: Heating Hysteresis (°C)
