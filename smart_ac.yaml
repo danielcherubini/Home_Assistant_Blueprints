@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v6.2 - Removing Default Mode)
+  name: Smart AC Control with Humidity Logic (v6.3 - Fourth Floor Dry)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
@@ -110,6 +110,12 @@ blueprint:
     house_temperature_sensor:
       name: House Mean Temperature Sensor
       description: The sensor providing the average house temperature.
+      selector:
+        entity:
+          domain: sensor
+    fourth_floor_humidity_sensor:
+      name: 4th Floor Humidity Sensor
+      description: The humidity sensor for the 4th floor.
       selector:
         entity:
           domain: sensor
@@ -228,6 +234,7 @@ action:
       var_house_temp_sensor_id: !input house_temperature_sensor
       var_second_floor_temp_sensor_id: !input second_floor_temp_sensor
       var_fourth_floor_temp_sensor_id: !input fourth_floor_temp_sensor
+      var_fourth_floor_humidity_sensor_id: !input fourth_floor_humidity_sensor
       var_house_humidity_sensor_id: !input house_humidity_sensor
       var_drying_active_helper_id: !input drying_active_helper
       var_sf_hvac_mode_helper_id: !input second_floor_current_hvac_mode_helper
@@ -257,6 +264,14 @@ action:
           {{ (comfort_temp_str|float(0) + var_cooling_hysteresis|float(0))|round(1) }}
         {% else %}
           none
+        {% endif %}
+      fourth_floor_needs_dry: >
+        {% set ff_humidity_str = states(var_fourth_floor_humidity_sensor_id) %}
+        {% set max_humidity_str = states('input_number.comfort_temp') %}
+        {% if ff_humidity_str not in ['unknown', 'unavailable'] and max_humidity_str not in ['unknown', 'unavailable'] %}
+          {{ ff_humidity_str|float(0)|round(1) > (max_humidity_str|float(0)|round(1) }}
+        {% else %}
+          false
         {% endif %}
       fourth_floor_needs_heat: >
         {% set ff_temp_str = states(var_fourth_floor_temp_sensor_id) %}
@@ -342,7 +357,14 @@ action:
         sequence:
           - service: input_text.set_value
             target: { entity_id: !input fourth_floor_current_hvac_mode_helper }
-            data: { value: "{{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_cool_mode }}" }
+            # data: { value: "{{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_cool_mode }}" }
+            data:
+              value: >
+                {% if fourth_floor_needs_dry %}
+                  {{ var_dry_hvac_mode }}
+                {% else %}
+                  {{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_comfort_mode }}
+                {% endif %}
           - service: input_text.set_value
             target: { entity_id: !input second_floor_current_hvac_mode_helper }
             data:
