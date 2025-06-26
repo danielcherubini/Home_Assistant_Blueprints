@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v6.3 - Fourth Floor Dry)
+  name: Smart AC Control with Humidity Logic (v6.4 - Fourth Floor Dry)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   input:
@@ -269,7 +269,7 @@ action:
         {% set ff_humidity_str = states(var_fourth_floor_humidity_sensor_id) %}
         {% set max_humidity_str = states('input_number.comfort_temp') %}
         {% if ff_humidity_str not in ['unknown', 'unavailable'] and max_humidity_str not in ['unknown', 'unavailable'] %}
-          {{ ff_humidity_str|float(0)|round(1) > (max_humidity_str|float(0)|round(1) }}
+          {{ ff_humidity_str|float(0)|round(1) > max_humidity_str|float(0)|round(1) }}
         {% else %}
           false
         {% endif %}
