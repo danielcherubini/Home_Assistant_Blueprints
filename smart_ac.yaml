@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v6.6 - Fourth Floor Dry)
+  name: Smart AC Control with Humidity Logic (v6.7 - Fourth Floor Dry)
   description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -364,7 +364,7 @@ action:
                 {% if fourth_floor_needs_dry %}
                   {{ var_dry_hvac_mode }}
                 {% else %}
-                  {{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_comfort_mode }}
+                  {{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on') else var_cool_mode }}
                 {% endif %}
           - service: input_text.set_value
             target: { entity_id: !input second_floor_current_hvac_mode_helper }
