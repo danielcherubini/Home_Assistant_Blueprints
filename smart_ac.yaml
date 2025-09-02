@@ -1,6 +1,6 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v6.9 - Fourth Floor Dry)
-  description: Automatically adjusts AC based on comfort temperature, house temperature, and humidity, with persistent drying mode.
+  name: Smart AC Control with Humidity Logic (v7.0 - Outdoor Relative Humidity)
+  description: Automatically adjusts AC based on comfort temperature, house temperature, and outdoor-relative humidity, with persistent drying mode.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
   input:
@@ -64,26 +64,32 @@ blueprint:
           step: 0.1
           mode: box
       default: 1.5
-    max_humidity:
-      name: Maximum Humidity (%)
-      description: Maximum humidity before dry is active.
+    outdoor_humidity_sensor:
+      name: Outdoor Humidity Sensor
+      description: The humidity sensor for outdoor conditions.
+      selector:
+        entity:
+          domain: sensor
+    humidity_upper_offset:
+      name: Humidity Upper Offset (%)
+      description: Added to outdoor humidity to determine when drying activates (e.g., outdoor 60% + offset 30% = activate at 90%).
       selector:
         number:
-          min: 30
-          max: 70
+          min: 5
+          max: 50
           step: 1
           mode: box
-      default: 60
-    min_humidity:
-      name: Minimum Humidity (%)
-      description: Min humidity before dry is inactive.
+      default: 30
+    humidity_lower_offset:
+      name: Humidity Lower Offset (%)
+      description: Added to outdoor humidity to determine when drying deactivates (e.g., outdoor 60% + offset 10% = deactivate at 70%).
       selector:
         number:
-          min: 30
-          max: 70
+          min: 0
+          max: 30
           step: 1
           mode: box
-      default: 50
+      default: 10
     second_floor_ac:
       name: 2nd Floor AC Entity
       description: The climate entity for the 2nd floor.
@@ -209,6 +215,7 @@ trigger:
       - input_number.comfort_temp 
       - !input house_temperature_sensor
       - !input house_humidity_sensor
+      - !input outdoor_humidity_sensor
       - !input drying_active_helper
 
 condition: []
@@ -237,11 +244,12 @@ action:
       var_fourth_floor_temp_sensor_id: !input fourth_floor_temp_sensor
       var_fourth_floor_humidity_sensor_id: !input fourth_floor_humidity_sensor
       var_house_humidity_sensor_id: !input house_humidity_sensor
+      var_outdoor_humidity_sensor_id: !input outdoor_humidity_sensor
       var_drying_active_helper_id: !input drying_active_helper
       var_sf_hvac_mode_helper_id: !input second_floor_current_hvac_mode_helper
       var_ff_hvac_mode_helper_id: !input fourth_floor_current_hvac_mode_helper
-      var_max_humidity: !input max_humidity
-      var_min_humidity: !input min_humidity
+      var_humidity_upper_offset: !input humidity_upper_offset
+      var_humidity_lower_offset: !input humidity_lower_offset
       
       # --- Calculated variables using the aliases above ---
       temp_diff: >
@@ -296,28 +304,61 @@ action:
         {% else %}
           -1
         {% endif %}
+      outdoor_humidity: >
+        {% set outdoor_humid_str = states(var_outdoor_humidity_sensor_id) %}
+        {% if outdoor_humid_str not in ['unknown', 'unavailable'] %}
+          {{ outdoor_humid_str|float(0) }}
+        {% else %}
+          -1
+        {% endif %}
+      dynamic_max_humidity: >
+        {% set outdoor_humid = states(var_outdoor_humidity_sensor_id) %}
+        {% if outdoor_humid not in ['unknown', 'unavailable'] %}
+          {{ (outdoor_humid|float(0) + var_humidity_upper_offset|float(0))|round(1) }}
+        {% else %}
+          -1
+        {% endif %}
+      dynamic_min_humidity: >
+        {% set outdoor_humid = states(var_outdoor_humidity_sensor_id) %}
+        {% if outdoor_humid not in ['unknown', 'unavailable'] %}
+          {{ (outdoor_humid|float(0) + var_humidity_lower_offset|float(0))|round(1) }}
+        {% else %}
+          -1
+        {% endif %}
 
-  - choose: # Manage drying_active_helper state
+  - choose: # Manage drying_active_helper state (only during cooling scenarios)
       - conditions:
           - condition: template
             value_template: "{{ not is_state(var_drying_active_helper_id, 'on') }}"
           - condition: template
-            value_template: "{{ current_humidity != -1 and current_humidity >= var_max_humidity }}"
+            value_template: "{{ current_humidity != -1 and dynamic_max_humidity != -1 and current_humidity >= dynamic_max_humidity }}"
+          - condition: template
+            value_template: "{{ cooling_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) > cooling_temp_trigger }}"
         sequence:
           - service: input_boolean.turn_on
             target:
               entity_id: !input drying_active_helper # Target still uses !input for YAML substitution
-        alias: "Activate Drying Helper"
+        alias: "Activate Drying Helper (Cooling Mode Only)"
       - conditions:
           - condition: template
             value_template: "{{ is_state(var_drying_active_helper_id, 'on') }}"
           - condition: template
-            value_template: "{{ current_humidity != -1 and current_humidity < var_min_humidity }}"
+            value_template: "{{ current_humidity != -1 and dynamic_min_humidity != -1 and current_humidity < dynamic_min_humidity }}"
         sequence:
           - service: input_boolean.turn_off
             target:
               entity_id: !input drying_active_helper # Target still uses !input for YAML substitution
         alias: "Deactivate Drying Helper"
+      - conditions:
+          - condition: template
+            value_template: "{{ is_state(var_drying_active_helper_id, 'on') }}"
+          - condition: template
+            value_template: "{{ heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) < heating_temp_trigger }}"
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input drying_active_helper # Target still uses !input for YAML substitution
+        alias: "Deactivate Drying Helper (Heating Mode Override)"
     default: []
 
   - choose: # Determine HVAC modes for input_text helpers
