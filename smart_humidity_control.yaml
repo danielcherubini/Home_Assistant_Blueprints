@@ -1,0 +1,222 @@
+blueprint:
+  name: Smart Humidity Control
+  description: >
+    Automatically control humidity in your home by comparing indoor and outdoor humidity levels.
+    Includes special handling for bathroom humidity spikes and configurable thresholds.
+  domain: automation
+  source_url: https://github.com/danielcherubini/Home-Assistant-Blueprints/blob/main/smart_humidity_control.yaml
+  
+  input:
+    # Required entities
+    house_humidity_sensor:
+      name: House Humidity Sensor
+      description: Sensor that measures the average humidity in your house
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: humidity
+    
+    bathroom_humidity_sensor:
+      name: Bathroom Humidity Sensor
+      description: Sensor that measures humidity in the bathroom
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: humidity
+    
+    outdoor_weather:
+      name: Outdoor Weather Entity
+      description: Weather entity that provides outdoor humidity data
+      selector:
+        entity:
+          filter:
+            - domain: weather
+    
+    humidity_control_switch:
+      name: Humidity Control Switch
+      description: Switch that controls your dehumidification system (fan, AC, etc.)
+      selector:
+        entity:
+          filter:
+            - domain: switch
+    
+    bathroom_timer:
+      name: Bathroom Humidity Timer
+      description: Timer helper to prevent system from turning off during bathroom use
+      selector:
+        entity:
+          filter:
+            - domain: timer
+    
+    # Optional notification
+    notification_device:
+      name: Notification Device (Optional)
+      description: Mobile device to receive notifications when system turns on/off
+      default: ""
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+    
+    # Thresholds
+    humidity_difference_threshold:
+      name: Humidity Difference Threshold
+      description: Minimum difference between indoor and outdoor humidity to activate (%)
+      default: 15
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 1
+          unit_of_measurement: "%"
+    
+    house_humidity_max:
+      name: House Humidity Maximum
+      description: Turn on dehumidification when house humidity reaches this level (%)
+      default: 65
+      selector:
+        number:
+          min: 50
+          max: 80
+          step: 1
+          unit_of_measurement: "%"
+    
+    house_humidity_min:
+      name: House Humidity Minimum
+      description: Turn off dehumidification when house humidity drops to this level (%)
+      default: 55
+      selector:
+        number:
+          min: 40
+          max: 70
+          step: 1
+          unit_of_measurement: "%"
+    
+    bathroom_humidity_threshold:
+      name: Bathroom Humidity Threshold
+      description: Activate system immediately when bathroom humidity exceeds this level (%)
+      default: 60
+      selector:
+        number:
+          min: 50
+          max: 80
+          step: 1
+          unit_of_measurement: "%"
+
+variables:
+  house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
+  outdoor_humidity: "{{ state_attr(outdoor_weather, 'humidity') | int(0) }}"
+  bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
+  humidity_diff: "{{ house_humidity - outdoor_humidity }}"
+  should_dehumidify: "{{ humidity_diff >= humidity_difference_threshold }}"
+  notification_device_id: !input notification_device
+
+trigger:
+  - platform: state
+    entity_id: !input house_humidity_sensor
+    id: humidity_change
+  - platform: state
+    entity_id: !input bathroom_timer
+    to: idle
+    from: active
+    id: timer_finished
+
+condition:
+  - condition: state
+    entity_id: !input bathroom_timer
+    state: idle
+
+action:
+  - choose:
+      # Bathroom priority mode - high humidity detected
+      - conditions:
+          - condition: trigger
+            id: humidity_change
+          - condition: template
+            value_template: "{{ should_dehumidify and bathroom_humidity >= bathroom_humidity_threshold }}"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input humidity_control_switch
+          - service: timer.start
+            target:
+              entity_id: !input bathroom_timer
+          - if:
+              - condition: template
+                value_template: "{{ notification_device_id != '' }}"
+            then:
+              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                data:
+                  message: "Humidity Control - On (Bathroom Priority: {{ bathroom_humidity }}%)"
+                  title: "Smart Humidity"
+
+      # General humidity control
+      - conditions:
+          - condition: trigger
+            id: humidity_change
+        sequence:
+          - choose:
+              # Turn on dehumidification
+              - conditions:
+                  - condition: template
+                    value_template: "{{ should_dehumidify and house_humidity >= house_humidity_max }}"
+                  - condition: state
+                    entity_id: !input humidity_control_switch
+                    state: 'off'
+                sequence:
+                  - service: switch.turn_on
+                    target:
+                      entity_id: !input humidity_control_switch
+                  - if:
+                      - condition: template
+                        value_template: "{{ notification_device_id != '' }}"
+                    then:
+                      - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                        data:
+                          message: "Humidity Control - On ({{ house_humidity }}% vs {{ outdoor_humidity }}% outside)"
+                          title: "Smart Humidity"
+
+              # Turn off dehumidification
+              - conditions:
+                  - condition: or
+                    conditions:
+                      - condition: template
+                        value_template: "{{ not should_dehumidify }}"
+                      - condition: template
+                        value_template: "{{ house_humidity <= house_humidity_min }}"
+                  - condition: state
+                    entity_id: !input humidity_control_switch
+                    state: 'on'
+                sequence:
+                  - service: switch.turn_off
+                    target:
+                      entity_id: !input humidity_control_switch
+                  - if:
+                      - condition: template
+                        value_template: "{{ notification_device_id != '' }}"
+                    then:
+                      - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                        data:
+                          message: "Humidity Control - Off ({{ house_humidity }}% vs {{ outdoor_humidity }}% outside)"
+                          title: "Smart Humidity"
+
+      # Timer finished - force off
+      - conditions:
+          - condition: trigger
+            id: timer_finished
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input humidity_control_switch
+          - if:
+              - condition: template
+                value_template: "{{ notification_device_id != '' }}"
+            then:
+              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                data:
+                  message: "Humidity Control - Off (Bathroom timer finished)"
+                  title: "Smart Humidity"
+
+mode: restart
