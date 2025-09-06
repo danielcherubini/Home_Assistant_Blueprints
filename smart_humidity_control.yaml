@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart Humidity Control
+  name: Smart Humidity Control (v1.0)
   description: >
     Automatically control humidity in your home by comparing indoor and outdoor humidity levels.
     Includes special handling for bathroom humidity spikes and configurable thresholds.
@@ -106,12 +106,19 @@ blueprint:
           unit_of_measurement: "%"
 
 variables:
+  house_humidity_sensor: !input house_humidity_sensor
+  outdoor_weather: !input outdoor_weather
+  bathroom_humidity_sensor: !input bathroom_humidity_sensor
+  humidity_difference_threshold: !input humidity_difference_threshold
+  house_humidity_max: !input house_humidity_max
+  house_humidity_min: !input house_humidity_min
+  bathroom_humidity_threshold: !input bathroom_humidity_threshold
+  notification_device_id: !input notification_device
   house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
   outdoor_humidity: "{{ state_attr(outdoor_weather, 'humidity') | int(0) }}"
   bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
   humidity_diff: "{{ house_humidity - outdoor_humidity }}"
   should_dehumidify: "{{ humidity_diff >= humidity_difference_threshold }}"
-  notification_device_id: !input notification_device
 
 trigger:
   - platform: state
