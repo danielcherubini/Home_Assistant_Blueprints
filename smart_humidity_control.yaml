@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart Humidity Control (v1.0)
+  name: Smart Humidity Control (v1.1)
   description: >
     Automatically control humidity in your home by comparing indoor and outdoor humidity levels.
     Includes special handling for bathroom humidity spikes and configurable thresholds.
@@ -20,6 +20,15 @@ blueprint:
     bathroom_humidity_sensor:
       name: Bathroom Humidity Sensor
       description: Sensor that measures humidity in the bathroom
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: humidity
+    
+    fourth_floor_humidity_sensor:
+      name: 4th Floor Humidity Sensor
+      description: Sensor that measures humidity on the 4th floor
       selector:
         entity:
           filter:
@@ -104,19 +113,33 @@ blueprint:
           max: 80
           step: 1
           unit_of_measurement: "%"
+    
+    fourth_floor_humidity_threshold:
+      name: 4th Floor Humidity Threshold
+      description: Activate system immediately when 4th floor humidity exceeds this level (%)
+      default: 65
+      selector:
+        number:
+          min: 50
+          max: 80
+          step: 1
+          unit_of_measurement: "%"
 
 variables:
   house_humidity_sensor: !input house_humidity_sensor
   outdoor_weather: !input outdoor_weather
   bathroom_humidity_sensor: !input bathroom_humidity_sensor
+  fourth_floor_humidity_sensor: !input fourth_floor_humidity_sensor
   humidity_difference_threshold: !input humidity_difference_threshold
   house_humidity_max: !input house_humidity_max
   house_humidity_min: !input house_humidity_min
   bathroom_humidity_threshold: !input bathroom_humidity_threshold
+  fourth_floor_humidity_threshold: !input fourth_floor_humidity_threshold
   notification_device_id: !input notification_device
   house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
   outdoor_humidity: "{{ state_attr(outdoor_weather, 'humidity') | int(0) }}"
   bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
+  fourth_floor_humidity: "{{ states(fourth_floor_humidity_sensor) | float(0) }}"
   humidity_diff: "{{ house_humidity - outdoor_humidity }}"
   should_dehumidify: "{{ humidity_diff >= humidity_difference_threshold }}"
 
@@ -157,6 +180,28 @@ action:
               - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
                 data:
                   message: "Humidity Control - On (Bathroom Priority: {{ bathroom_humidity }}%)"
+                  title: "Smart Humidity"
+
+      # 4th Floor priority mode - high humidity detected
+      - conditions:
+          - condition: trigger
+            id: humidity_change
+          - condition: template
+            value_template: "{{ should_dehumidify and fourth_floor_humidity >= fourth_floor_humidity_threshold }}"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input humidity_control_switch
+          - service: timer.start
+            target:
+              entity_id: !input bathroom_timer
+          - if:
+              - condition: template
+                value_template: "{{ notification_device_id != '' }}"
+            then:
+              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                data:
+                  message: "Humidity Control - On (4th Floor Priority: {{ fourth_floor_humidity }}%)"
                   title: "Smart Humidity"
 
       # General humidity control
