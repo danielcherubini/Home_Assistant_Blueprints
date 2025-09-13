@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart Humidity Control (v1.2)
+  name: Smart Humidity Control (v1.3)
   description: >
     Automatically control humidity in your home based on house mean humidity.
     Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
@@ -105,7 +105,7 @@ blueprint:
 
     bathroom_minimum_offset:
       name: Bathroom Minimum Offset
-      description: Minimum offset from house mean to activate bathroom priority (%)
+      description: Minimum offset from house mean before turning off bathroom priority (%)
       default: 0
       selector:
         number:
@@ -127,7 +127,7 @@ blueprint:
 
     fourth_floor_minimum_offset:
       name: 4th Floor Minimum Offset
-      description: Minimum offset from house mean to activate 4th floor priority (%)
+      description: Minimum offset from house mean before turning off 4th floor priority (%)
       default: 0
       selector:
         number:
@@ -147,15 +147,13 @@ variables:
   fourth_floor_humidity_offset: !input fourth_floor_humidity_offset
   fourth_floor_minimum_offset: !input fourth_floor_minimum_offset
   mode_tracker: !input mode_tracker
-  notification_device_id: !input notification_device
+  notification_device: !input notification_device
   dashboard_url: !input dashboard_url
   house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
   bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
   fourth_floor_humidity: "{{ states(fourth_floor_humidity_sensor) | float(0) }}"
   bathroom_threshold: "{{ house_humidity + bathroom_humidity_offset }}"
-  bathroom_minimum_threshold: "{{ house_humidity + bathroom_minimum_offset }}"
   fourth_floor_threshold: "{{ house_humidity + fourth_floor_humidity_offset }}"
-  fourth_floor_minimum_threshold: "{{ house_humidity + fourth_floor_minimum_offset }}"
   current_mode: "{{ states(mode_tracker) }}"
 
 trigger:
@@ -172,7 +170,7 @@ action:
           - condition: trigger
             id: humidity_change
           - condition: template
-            value_template: "{{ bathroom_humidity >= bathroom_threshold and bathroom_humidity >= bathroom_minimum_threshold }}"
+            value_template: "{{ bathroom_humidity >= bathroom_threshold }}"
           - condition: state
             entity_id: !input humidity_control_switch
             state: "off"
@@ -187,22 +185,23 @@ action:
               value: "bathroom"
           - if:
               - condition: template
-                value_template: "{{ notification_device_id != '' }}"
+                value_template: "{{ notification_device != '' }}"
             then:
-              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+              - device_id: !input notification_device
+                domain: mobile_app
+                type: notify
+                title: "Smart Humidity"
+                message: "Humidity Control - On (Bathroom: {{ bathroom_humidity }}% vs house mean {{ house_humidity }}%)"
                 data:
-                  message: "Humidity Control - On (Bathroom: {{ bathroom_humidity }}% vs house mean {{ house_humidity }}%)"
-                  title: "Smart Humidity"
-                  data:
-                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                    clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # Bathroom priority mode - turn off when reaches house mean
       - conditions:
           - condition: trigger
             id: humidity_change
           - condition: template
-            value_template: "{{ bathroom_humidity <= house_humidity }}"
+            value_template: "{{ bathroom_humidity <= (house_humidity + bathroom_minimum_offset) }}"
           - condition: state
             entity_id: !input humidity_control_switch
             state: "on"
@@ -219,22 +218,23 @@ action:
               value: "idle"
           - if:
               - condition: template
-                value_template: "{{ notification_device_id != '' }}"
+                value_template: "{{ notification_device != '' }}"
             then:
-              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+              - device_id: !input notification_device
+                domain: mobile_app
+                type: notify
+                title: "Smart Humidity"
+                message: "Humidity Control - Off (Bathroom reached house mean: {{ bathroom_humidity }}%)"
                 data:
-                  message: "Humidity Control - Off (Bathroom reached house mean: {{ bathroom_humidity }}%)"
-                  title: "Smart Humidity"
-                  data:
-                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                    clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # 4th Floor priority mode - turn on when exceeds threshold, off when reaches house mean
       - conditions:
           - condition: trigger
             id: humidity_change
           - condition: template
-            value_template: "{{ fourth_floor_humidity >= fourth_floor_threshold and fourth_floor_humidity >= fourth_floor_minimum_threshold }}"
+            value_template: "{{ fourth_floor_humidity >= fourth_floor_threshold }}"
           - condition: state
             entity_id: !input humidity_control_switch
             state: "off"
@@ -249,22 +249,23 @@ action:
               value: "fourth_floor"
           - if:
               - condition: template
-                value_template: "{{ notification_device_id != '' }}"
+                value_template: "{{ notification_device != '' }}"
             then:
-              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+              - device_id: !input notification_device
+                domain: mobile_app
+                type: notify
+                title: "Smart Humidity"
+                message: "Humidity Control - On (4th Floor: {{ fourth_floor_humidity }}% vs house mean {{ house_humidity }}%)"
                 data:
-                  message: "Humidity Control - On (4th Floor: {{ fourth_floor_humidity }}% vs house mean {{ house_humidity }}%)"
-                  title: "Smart Humidity"
-                  data:
-                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                    clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # 4th Floor priority mode - turn off when reaches house mean
       - conditions:
           - condition: trigger
             id: humidity_change
           - condition: template
-            value_template: "{{ fourth_floor_humidity <= house_humidity }}"
+            value_template: "{{ fourth_floor_humidity <= (house_humidity + fourth_floor_minimum_offset) }}"
           - condition: state
             entity_id: !input humidity_control_switch
             state: "on"
@@ -281,15 +282,16 @@ action:
               value: "idle"
           - if:
               - condition: template
-                value_template: "{{ notification_device_id != '' }}"
+                value_template: "{{ notification_device != '' }}"
             then:
-              - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+              - device_id: !input notification_device
+                domain: mobile_app
+                type: notify
+                title: "Smart Humidity"
+                message: "Humidity Control - Off (4th Floor reached house mean: {{ fourth_floor_humidity }}%)"
                 data:
-                  message: "Humidity Control - Off (4th Floor reached house mean: {{ fourth_floor_humidity }}%)"
-                  title: "Smart Humidity"
-                  data:
-                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                    clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # General humidity control
       - conditions:
@@ -319,13 +321,13 @@ action:
                       - condition: template
                         value_template: "{{ notification_device_id != '' }}"
                     then:
-                      - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - On (House: {{ house_humidity }}%)"
                         data:
-                          message: "Humidity Control - On (House: {{ house_humidity }}%)"
-                          title: "Smart Humidity"
-                          data:
-                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                          clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
               # Turn off dehumidification - only if not in priority mode
               - conditions:
@@ -349,13 +351,13 @@ action:
                       - condition: template
                         value_template: "{{ notification_device_id != '' }}"
                     then:
-                      - service: notify.mobile_app_{{ device_attr(notification_device_id, 'name') | lower | replace(' ', '_') | replace('-', '_') }}
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - Off (House: {{ house_humidity }}%)"
                         data:
-                          message: "Humidity Control - Off (House: {{ house_humidity }}%)"
-                          title: "Smart Humidity"
-                          data:
-                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                          clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
 mode: restart
 
