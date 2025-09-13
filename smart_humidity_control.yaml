@@ -5,7 +5,7 @@ blueprint:
     Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
   domain: automation
   source_url: https://github.com/danielcherubini/Home-Assistant-Blueprints/blob/main/smart_humidity_control.yaml
-  
+
   input:
     # Required entities
     house_humidity_sensor:
@@ -16,7 +16,7 @@ blueprint:
           filter:
             - domain: sensor
               device_class: humidity
-    
+
     bathroom_humidity_sensor:
       name: Bathroom Humidity Sensor
       description: Sensor that measures humidity in the bathroom
@@ -25,7 +25,7 @@ blueprint:
           filter:
             - domain: sensor
               device_class: humidity
-    
+
     fourth_floor_humidity_sensor:
       name: 4th Floor Humidity Sensor
       description: Sensor that measures humidity on the 4th floor
@@ -34,7 +34,7 @@ blueprint:
           filter:
             - domain: sensor
               device_class: humidity
-    
+
     humidity_control_switch:
       name: Humidity Control Switch
       description: Switch that controls your dehumidification system (fan, AC, etc.)
@@ -67,7 +67,7 @@ blueprint:
       default: ""
       selector:
         text:
-    
+
     # Thresholds
 
     house_humidity_max:
@@ -80,7 +80,7 @@ blueprint:
           max: 80
           step: 1
           unit_of_measurement: "%"
-    
+
     house_humidity_min:
       name: House Humidity Minimum
       description: Turn off dehumidification when house humidity drops to this level (%)
@@ -91,7 +91,7 @@ blueprint:
           max: 70
           step: 1
           unit_of_measurement: "%"
-    
+
     bathroom_humidity_offset:
       name: Bathroom Humidity Offset
       description: Activate when bathroom humidity exceeds house mean by this amount (%)
@@ -113,7 +113,7 @@ blueprint:
           max: 15
           step: 1
           unit_of_measurement: "%"
-    
+
     fourth_floor_humidity_offset:
       name: 4th Floor Humidity Offset
       description: Activate when 4th floor humidity exceeds house mean by this amount (%)
@@ -175,7 +175,7 @@ action:
             value_template: "{{ bathroom_humidity >= bathroom_threshold and bathroom_humidity >= bathroom_minimum_threshold }}"
           - condition: state
             entity_id: !input humidity_control_switch
-            state: 'off'
+            state: "off"
         sequence:
           - service: switch.turn_on
             target:
@@ -194,6 +194,7 @@ action:
                   message: "Humidity Control - On (Bathroom: {{ bathroom_humidity }}% vs house mean {{ house_humidity }}%)"
                   title: "Smart Humidity"
                   data:
+                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                     clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # Bathroom priority mode - turn off when reaches house mean
@@ -204,7 +205,7 @@ action:
             value_template: "{{ bathroom_humidity <= house_humidity }}"
           - condition: state
             entity_id: !input humidity_control_switch
-            state: 'on'
+            state: "on"
           - condition: template
             value_template: "{{ current_mode == 'bathroom' }}"
         sequence:
@@ -225,6 +226,7 @@ action:
                   message: "Humidity Control - Off (Bathroom reached house mean: {{ bathroom_humidity }}%)"
                   title: "Smart Humidity"
                   data:
+                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                     clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # 4th Floor priority mode - turn on when exceeds threshold, off when reaches house mean
@@ -235,7 +237,7 @@ action:
             value_template: "{{ fourth_floor_humidity >= fourth_floor_threshold and fourth_floor_humidity >= fourth_floor_minimum_threshold }}"
           - condition: state
             entity_id: !input humidity_control_switch
-            state: 'off'
+            state: "off"
         sequence:
           - service: switch.turn_on
             target:
@@ -254,6 +256,7 @@ action:
                   message: "Humidity Control - On (4th Floor: {{ fourth_floor_humidity }}% vs house mean {{ house_humidity }}%)"
                   title: "Smart Humidity"
                   data:
+                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                     clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # 4th Floor priority mode - turn off when reaches house mean
@@ -264,7 +267,7 @@ action:
             value_template: "{{ fourth_floor_humidity <= house_humidity }}"
           - condition: state
             entity_id: !input humidity_control_switch
-            state: 'on'
+            state: "on"
           - condition: template
             value_template: "{{ current_mode == 'fourth_floor' }}"
         sequence:
@@ -285,6 +288,7 @@ action:
                   message: "Humidity Control - Off (4th Floor reached house mean: {{ fourth_floor_humidity }}%)"
                   title: "Smart Humidity"
                   data:
+                    url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                     clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
       # General humidity control
@@ -299,7 +303,7 @@ action:
                     value_template: "{{ house_humidity >= house_humidity_max }}"
                   - condition: state
                     entity_id: !input humidity_control_switch
-                    state: 'off'
+                    state: "off"
                   - condition: template
                     value_template: "{{ current_mode == 'idle' }}"
                 sequence:
@@ -320,6 +324,7 @@ action:
                           message: "Humidity Control - On (House: {{ house_humidity }}%)"
                           title: "Smart Humidity"
                           data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                             clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
               # Turn off dehumidification - only if not in priority mode
@@ -328,7 +333,7 @@ action:
                     value_template: "{{ house_humidity <= house_humidity_min }}"
                   - condition: state
                     entity_id: !input humidity_control_switch
-                    state: 'on'
+                    state: "on"
                   - condition: template
                     value_template: "{{ current_mode in ['general', 'idle'] }}"
                 sequence:
@@ -349,6 +354,8 @@ action:
                           message: "Humidity Control - Off (House: {{ house_humidity }}%)"
                           title: "Smart Humidity"
                           data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                             clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
 mode: restart
+
