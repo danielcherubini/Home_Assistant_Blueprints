@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart Humidity Control (v1.3)
+  name: Smart Humidity Control (v1.4)
   description: >
     Automatically control humidity in your home based on house mean humidity.
     Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
@@ -34,6 +34,15 @@ blueprint:
           filter:
             - domain: sensor
               device_class: humidity
+
+    outdoor_weather:
+      name: Outdoor Weather Entity (Optional)
+      description: Weather entity that provides outdoor humidity data for differential mode
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: weather
 
     humidity_control_switch:
       name: Humidity Control Switch
@@ -136,22 +145,49 @@ blueprint:
           step: 1
           unit_of_measurement: "%"
 
+    outdoor_balance_max:
+      name: Outdoor Balance Maximum
+      description: Turn on when indoor humidity exceeds outdoor by this amount (%)
+      default: 20
+      selector:
+        number:
+          min: 10
+          max: 40
+          step: 1
+          unit_of_measurement: "%"
+
+    outdoor_balance_min:
+      name: Outdoor Balance Minimum
+      description: Turn off when indoor-outdoor difference drops to this amount (%)
+      default: 10
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 1
+          unit_of_measurement: "%"
+
 variables:
   house_humidity_sensor: !input house_humidity_sensor
   bathroom_humidity_sensor: !input bathroom_humidity_sensor
   fourth_floor_humidity_sensor: !input fourth_floor_humidity_sensor
+  outdoor_weather: !input outdoor_weather
   house_humidity_max: !input house_humidity_max
   house_humidity_min: !input house_humidity_min
   bathroom_humidity_offset: !input bathroom_humidity_offset
   bathroom_minimum_offset: !input bathroom_minimum_offset
   fourth_floor_humidity_offset: !input fourth_floor_humidity_offset
   fourth_floor_minimum_offset: !input fourth_floor_minimum_offset
+  outdoor_balance_max: !input outdoor_balance_max
+  outdoor_balance_min: !input outdoor_balance_min
   mode_tracker: !input mode_tracker
   notification_device: !input notification_device
   dashboard_url: !input dashboard_url
   house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
   bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
   fourth_floor_humidity: "{{ states(fourth_floor_humidity_sensor) | float(0) }}"
+  outdoor_humidity: "{{ state_attr(outdoor_weather, 'humidity') | int(0) if outdoor_weather != '' else 0 }}"
+  humidity_diff: "{{ house_humidity - outdoor_humidity }}"
   bathroom_threshold: "{{ house_humidity + bathroom_humidity_offset }}"
   fourth_floor_threshold: "{{ house_humidity + fourth_floor_humidity_offset }}"
   current_mode: "{{ states(mode_tracker) }}"
@@ -293,6 +329,70 @@ action:
                   url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                   clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
+      # Outdoor Balance mode - turn on when indoor exceeds outdoor by max threshold
+      - conditions:
+          - condition: trigger
+            id: humidity_change
+          - condition: template
+            value_template: "{{ outdoor_weather != '' and humidity_diff >= outdoor_balance_max }}"
+          - condition: state
+            entity_id: !input humidity_control_switch
+            state: "off"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input humidity_control_switch
+          - service: input_text.set_value
+            target:
+              entity_id: !input mode_tracker
+            data:
+              value: "outdoor_balance"
+          - if:
+              - condition: template
+                value_template: "{{ notification_device != '' }}"
+            then:
+              - device_id: !input notification_device
+                domain: mobile_app
+                type: notify
+                title: "Smart Humidity"
+                message: "Humidity Control - On (Outdoor Balance: {{ house_humidity }}% inside vs {{ outdoor_humidity }}% outside)"
+                data:
+                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+      # Outdoor Balance mode - turn off when difference drops to minimum
+      - conditions:
+          - condition: trigger
+            id: humidity_change
+          - condition: template
+            value_template: "{{ outdoor_weather != '' and humidity_diff <= outdoor_balance_min }}"
+          - condition: state
+            entity_id: !input humidity_control_switch
+            state: "on"
+          - condition: template
+            value_template: "{{ current_mode == 'outdoor_balance' }}"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input humidity_control_switch
+          - service: input_text.set_value
+            target:
+              entity_id: !input mode_tracker
+            data:
+              value: "idle"
+          - if:
+              - condition: template
+                value_template: "{{ notification_device != '' }}"
+            then:
+              - device_id: !input notification_device
+                domain: mobile_app
+                type: notify
+                title: "Smart Humidity"
+                message: "Humidity Control - Off (Outdoor Balance: {{ house_humidity }}% inside vs {{ outdoor_humidity }}% outside)"
+                data:
+                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
       # General humidity control
       - conditions:
           - condition: trigger
@@ -307,7 +407,7 @@ action:
                     entity_id: !input humidity_control_switch
                     state: "off"
                   - condition: template
-                    value_template: "{{ current_mode == 'idle' }}"
+                    value_template: "{{ current_mode in ['idle', 'outdoor_balance'] }}"
                 sequence:
                   - service: switch.turn_on
                     target:
@@ -337,7 +437,7 @@ action:
                     entity_id: !input humidity_control_switch
                     state: "on"
                   - condition: template
-                    value_template: "{{ current_mode in ['general', 'idle'] }}"
+                    value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance'] }}"
                 sequence:
                   - service: switch.turn_off
                     target:
