@@ -1,7 +1,6 @@
 blueprint:
-  name: Smart AC Control with Humidity Logic (v7.0 - Outdoor Relative Humidity)
-  description: Automatically adjusts AC based on comfort temperature, house temperature,
-    and outdoor-relative humidity, with persistent drying mode.
+  name: Smart AC Control (v8.0 - No Humidity)
+  description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
   input:
@@ -35,26 +34,6 @@ blueprint:
           step: 0.1
           mode: box
       default: 0.2
-    dry_mode_temperature_difference_2nd_floor:
-      name: Dry Difference 2nd Floor (°C)
-      description: Temperature difference for "dry" mode.
-      selector:
-        number:
-          min: -6.0
-          max: 6.0
-          step: 0.1
-          mode: box
-      default: 1.0
-    dry_mode_temperature_difference_4th_floor:
-      name: Dry Difference 4th Floor (°C)
-      description: Temperature difference for "dry" mode.
-      selector:
-        number:
-          min: -6.0
-          max: 6.0
-          step: 0.1
-          mode: box
-      default: 1.0
     fourth_floor_temperature_difference:
       name: 4th Floor Temperature Difference (°C)
       description: Temperature difference for the 4th floor target relative to comfort
@@ -66,34 +45,6 @@ blueprint:
           step: 0.1
           mode: box
       default: 1.5
-    outdoor_humidity_sensor:
-      name: Outdoor Humidity Sensor
-      description: The humidity sensor for outdoor conditions.
-      selector:
-        entity:
-          domain:
-          - sensor
-          multiple: false
-    humidity_upper_offset:
-      name: Humidity Upper Offset (%)
-      description: Added to outdoor humidity to determine when drying activates (e.g., outdoor 60% + offset 30% = activate at 90%).
-      selector:
-        number:
-          min: 5.0
-          max: 50.0
-          step: 1.0
-          mode: box
-      default: 30
-    humidity_lower_offset:
-      name: Humidity Lower Offset (%)
-      description: Added to outdoor humidity to determine when drying deactivates (e.g., outdoor 60% + offset 10% = deactivate at 70%).
-      selector:
-        number:
-          min: 0.0
-          max: 30.0
-          step: 1.0
-          mode: box
-      default: 10
     second_floor_ac:
       name: 2nd Floor AC Entity
       description: The climate entity for the 2nd floor.
@@ -134,34 +85,9 @@ blueprint:
           domain:
           - sensor
           multiple: false
-    fourth_floor_humidity_sensor:
-      name: 4th Floor Humidity Sensor
-      description: The humidity sensor for the 4th floor.
-      selector:
-        entity:
-          domain:
-          - sensor
-          multiple: false
-    house_humidity_sensor:
-      name: House Mean Humidity Sensor
-      description: The sensor providing the average house humidity.
-      selector:
-        entity:
-          domain:
-          - sensor
-          multiple: false
-    drying_active_helper:
-      name: Drying Active Helper
-      description: Input boolean helper to track if drying mode is active (e.g., input_boolean.drying_mode_active).
-        Create this helper in HA.
-      selector:
-        entity:
-          domain:
-          - input_boolean
-          multiple: false
     comfort_preset:
       name: Comfort Preset
-      description: The preset to use when in the comfort zone (and not drying).
+      description: The preset to use when in the comfort zone.
       selector:
         select:
           options:
@@ -201,23 +127,9 @@ blueprint:
           custom_value: false
           multiple: false
       default: Powerful
-    dry_preset:
-      name: Dry Preset
-      description: The preset to use when drying mode is active.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Normal
     comfort_mode:
       name: Comfort Mode (HVAC)
-      description: The HVAC mode to use when in the comfort zone (and not drying).
+      description: The HVAC mode to use when in the comfort zone.
       selector:
         select:
           options:
@@ -225,7 +137,6 @@ blueprint:
           - heat_cool
           - cool
           - heat
-          - dry
           - fan_only
           - 'off'
           sort: false
@@ -242,7 +153,6 @@ blueprint:
           - heat_cool
           - cool
           - heat
-          - dry
           - fan_only
           - 'off'
           sort: false
@@ -259,30 +169,12 @@ blueprint:
           - heat_cool
           - cool
           - heat
-          - dry
           - fan_only
           - 'off'
           sort: false
           custom_value: false
           multiple: false
       default: cool
-    dry_mode:
-      name: Dry Mode (HVAC)
-      description: The HVAC mode to use when drying mode is active.
-      selector:
-        select:
-          options:
-          - auto
-          - heat_cool
-          - cool
-          - heat
-          - dry
-          - fan_only
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: dry
     second_floor_current_hvac_mode_helper:
       name: 2nd Floor AC Current HVAC Mode Helper
       description: Helper entity (input_text) to store the current HVAC mode of the
@@ -303,117 +195,72 @@ blueprint:
           - input_text
           multiple: false
       default: input_text.fourth_floor_ac_hvac_mode
+    comfort_temperature:
+      name: Comfort Temperature Entity
+      description: The input_number entity that controls the target comfort temperature.
+      selector:
+        entity:
+          domain:
+          - input_number
+          multiple: false
+      default: input_number.comfort_temp
 trigger:
 - platform: state
   entity_id:
-  - input_number.comfort_temp
+  - !input comfort_temperature
   - !input house_temperature_sensor
-  - !input house_humidity_sensor
-  - !input outdoor_humidity_sensor
-  - !input drying_active_helper
+  for:
+    minutes: 2
 condition: []
 action:
 - variables:
     var_comfort_mode: !input comfort_mode
     var_heat_mode: !input heat_mode
     var_cool_mode: !input cool_mode
-    var_dry_hvac_mode: !input dry_mode
     var_comfort_preset: !input comfort_preset
     var_heat_preset: !input heat_preset
     var_cool_preset: !input cool_preset
-    var_dry_preset: !input dry_preset
     var_heating_hysteresis: !input heating_hysteresis
     var_cooling_hysteresis: !input cooling_hysteresis
     var_comfort_hysteresis: !input comfort_hysteresis
-    var_dry_mode_temp_diff_2nd_floor: !input dry_mode_temperature_difference_2nd_floor
-    var_dry_mode_temp_diff_4th_floor: !input dry_mode_temperature_difference_4th_floor
     var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
     var_house_temp_sensor_id: !input house_temperature_sensor
     var_second_floor_temp_sensor_id: !input second_floor_temp_sensor
     var_fourth_floor_temp_sensor_id: !input fourth_floor_temp_sensor
-    var_fourth_floor_humidity_sensor_id: !input fourth_floor_humidity_sensor
-    var_house_humidity_sensor_id: !input house_humidity_sensor
-    var_outdoor_humidity_sensor_id: !input outdoor_humidity_sensor
-    var_drying_active_helper_id: !input drying_active_helper
     var_sf_hvac_mode_helper_id: !input second_floor_current_hvac_mode_helper
     var_ff_hvac_mode_helper_id: !input fourth_floor_current_hvac_mode_helper
-    var_humidity_upper_offset: !input humidity_upper_offset
-    var_humidity_lower_offset: !input humidity_lower_offset
+    var_comfort_temperature_id: !input comfort_temperature
     temp_diff: "{% set house_temp_str = states(var_house_temp_sensor_id) %} {% set
-      comfort_temp_str = states('input_number.comfort_temp') %} {% if house_temp_str
+      comfort_temp_str = states(var_comfort_temperature_id) %} {% if house_temp_str
       not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
       %}\n  {{ (house_temp_str|float(0) - comfort_temp_str|float(0))|round(1) }}\n{%
       else %}\n  none\n{% endif %}\n"
-    heating_temp_trigger: "{% set comfort_temp_str = states('input_number.comfort_temp')
+    heating_temp_trigger: "{% set comfort_temp_str = states(var_comfort_temperature_id)
       %} {% if comfort_temp_str not in ['unknown', 'unavailable'] %}\n  {{ (comfort_temp_str|float(0)
       - var_heating_hysteresis|float(0))|round(1) }}\n{% else %}\n  none\n{% endif
       %}\n"
-    cooling_temp_trigger: "{% set comfort_temp_str = states('input_number.comfort_temp')
+    cooling_temp_trigger: "{% set comfort_temp_str = states(var_comfort_temperature_id)
       %} {% if comfort_temp_str not in ['unknown', 'unavailable'] %}\n  {{ (comfort_temp_str|float(0)
       + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  none\n{% endif
       %}\n"
-    fourth_floor_needs_dry: "{% set ff_humidity_str = states(var_fourth_floor_humidity_sensor_id)
-      %} {% set outdoor_humid = states(var_outdoor_humidity_sensor_id) %} {% if ff_humidity_str
-      not in ['unknown', 'unavailable'] and outdoor_humid not in ['unknown', 'unavailable']
-      %}\n  {{ ff_humidity_str|float(0)|round(1) >= (outdoor_humid|float(0) + var_humidity_lower_offset|float(0))|round(1) }}\n{% else %}\n  false\n{% endif %}\n"
     fourth_floor_needs_heat: "{% set ff_temp_str = states(var_fourth_floor_temp_sensor_id)
-      %} {% set comfort_temp_str = states('input_number.comfort_temp') %} {% if ff_temp_str
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if ff_temp_str
       not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
       %}\n  {{ ff_temp_str|float(0)|round(1) < ((comfort_temp_str|float(0) + var_fourth_floor_temp_diff|float(0))
       - var_heating_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
       %}\n"
-    second_floor_needs_cool: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
-      %} {% set comfort_temp_str = states('input_number.comfort_temp') %} {% if sf_temp_str
+    fourth_floor_needs_cool: "{% set ff_temp_str = states(var_fourth_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if ff_temp_str
       not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
-      %}\n  {{ sf_temp_str|float(0)|round(1) > ((comfort_temp_str|float(0) - var_fourth_floor_temp_diff|float(0))
+      %}\n  {{ ff_temp_str|float(0)|round(1) > ((comfort_temp_str|float(0) + var_fourth_floor_temp_diff|float(0))
       + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
       %}\n"
-    current_humidity: "{% set humid_str = states(var_house_humidity_sensor_id) %}
-      {% if humid_str not in ['unknown', 'unavailable'] %}\n  {{ humid_str|float(0)
-      }}\n{% else %}\n  -1\n{% endif %}\n"
-    outdoor_humidity: "{% set outdoor_humid_str = states(var_outdoor_humidity_sensor_id) %}
-      {% if outdoor_humid_str not in ['unknown', 'unavailable'] %}\n  {{ outdoor_humid_str|float(0)
-      }}\n{% else %}\n  -1\n{% endif %}\n"
-    dynamic_max_humidity: "{% set outdoor_humid = states(var_outdoor_humidity_sensor_id) %}
-      {% if outdoor_humid not in ['unknown', 'unavailable'] %}\n  {{ (outdoor_humid|float(0)
-      + var_humidity_upper_offset|float(0))|round(1) }}\n{% else %}\n  -1\n{% endif %}\n"
-    dynamic_min_humidity: "{% set outdoor_humid = states(var_outdoor_humidity_sensor_id) %}
-      {% if outdoor_humid not in ['unknown', 'unavailable'] %}\n  {{ (outdoor_humid|float(0)
-      + var_humidity_lower_offset|float(0))|round(1) }}\n{% else %}\n  -1\n{% endif %}\n"
-- choose:
-  - conditions:
-    - condition: template
-      value_template: '{{ not is_state(var_drying_active_helper_id, ''on'') }}'
-    - condition: template
-      value_template: '{{ current_humidity != -1 and dynamic_max_humidity != -1 and current_humidity >= dynamic_max_humidity }}'
-    - condition: template
-      value_template: '{{ cooling_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) > cooling_temp_trigger }}'
-    sequence:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: !input drying_active_helper
-    alias: Activate Drying Helper (Cooling Mode Only)
-  - conditions:
-    - condition: template
-      value_template: '{{ is_state(var_drying_active_helper_id, ''on'') }}'
-    - condition: template
-      value_template: '{{ current_humidity != -1 and dynamic_min_humidity != -1 and current_humidity < dynamic_min_humidity }}'
-    sequence:
-    - service: input_boolean.turn_off
-      target:
-        entity_id: !input drying_active_helper
-    alias: Deactivate Drying Helper
-  - conditions:
-    - condition: template
-      value_template: '{{ is_state(var_drying_active_helper_id, ''on'') }}'
-    - condition: template
-      value_template: '{{ heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) < heating_temp_trigger }}'
-    sequence:
-    - service: input_boolean.turn_off
-      target:
-        entity_id: !input drying_active_helper
-    alias: Deactivate Drying Helper (Heating Mode Override)
-  default: []
+    second_floor_needs_cool: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if sf_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ sf_temp_str|float(0)|round(1) > (comfort_temp_str|float(0)
+      + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
 - choose:
   - conditions:
     - condition: template
@@ -430,7 +277,7 @@ action:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
         value: '{{ var_comfort_mode }}'
-    alias: Set Comfort/Dry HVAC Mode
+    alias: Set Comfort HVAC Mode
   - conditions:
     - condition: template
       value_template: '{{ heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1)
@@ -445,8 +292,7 @@ action:
       target:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
-        value: "{% if fourth_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n
-          \ {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% if fourth_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Heat HVAC Mode
   - conditions:
     - condition: template
@@ -457,31 +303,18 @@ action:
       target:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
-        value: "{% if fourth_floor_needs_dry %}\n  {{ var_dry_hvac_mode }}\n{% else
-          %}\n  {{ var_dry_hvac_mode if is_state(var_drying_active_helper_id, 'on')
-          else var_cool_mode }}\n{% endif %}\n"
+        value: "{% if fourth_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     - service: input_text.set_value
       target:
         entity_id: !input second_floor_current_hvac_mode_helper
       data:
-        value: "{% if second_floor_needs_cool %}\n  {{ var_dry_hvac_mode if is_state(var_drying_active_helper_id,
-          'on') else var_cool_mode }}\n{% else %}\n  {{ var_dry_hvac_mode if is_state(var_drying_active_helper_id,
-          'on') else var_comfort_mode }}\n{% endif %}\n"
+        value: "{% if second_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Cool HVAC Mode
   default: []
 - variables:
     sf_target_hvac_mode: '{{ states(var_sf_hvac_mode_helper_id) }}'
-    sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %} {{ var_heat_preset
-      }} {% elif sf_target_hvac_mode == var_cool_mode %} {{ var_cool_preset }} {%
-      elif sf_target_hvac_mode == var_dry_hvac_mode %} {{ var_dry_preset }} {% else
-      %} {{ var_comfort_preset }} {% endif %}
-
-      '
-    sf_target_temp: '{% if sf_target_hvac_mode == var_dry_hvac_mode %} {{ (states(''input_number.comfort_temp'')|float(0)
-      + var_dry_mode_temp_diff_2nd_floor) }} {% else %} {{ states(''input_number.comfort_temp'')|float(0)
-      }} {% endif %}
-
-      '
+    sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif sf_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
+    sf_target_temp: '{{ states(var_comfort_temperature_id)|float(0) }}'
 - service: climate.set_preset_mode
   target:
     entity_id: !input second_floor_ac
@@ -495,18 +328,8 @@ action:
     hvac_mode: '{{ sf_target_hvac_mode }}'
 - variables:
     ff_target_hvac_mode: '{{ states(var_ff_hvac_mode_helper_id) }}'
-    ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %} {{ var_heat_preset
-      }} {% elif ff_target_hvac_mode == var_cool_mode %} {{ var_cool_preset }} {%
-      elif ff_target_hvac_mode == var_dry_hvac_mode %} {{ var_dry_preset }} {% else
-      %} {{ var_comfort_preset }} {% endif %}
-
-      '
-    ff_target_temp: '{% if ff_target_hvac_mode == var_dry_hvac_mode %} {{ (states(''input_number.comfort_temp'')|float(0)
-      + (var_dry_mode_temp_diff_4th_floor + var_fourth_floor_temp_diff)) }} {% else
-      %} {{ (states(''input_number.comfort_temp'')|float(0) + var_fourth_floor_temp_diff)
-      }} {% endif %}
-
-      '
+    ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif ff_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
+    ff_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_fourth_floor_temp_diff) }}'
 - service: climate.set_preset_mode
   target:
     entity_id: !input fourth_floor_ac
