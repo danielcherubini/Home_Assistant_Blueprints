@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v8.0 - No Humidity)
+  name: Smart AC Control (v8.1 - Startup Protection)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -211,7 +211,17 @@ trigger:
   - !input house_temperature_sensor
   for:
     minutes: 2
-condition: []
+condition:
+- condition: template
+  value_template: >
+    {{ states('homeassistant.uptime') | as_datetime | as_local >
+       (now() - timedelta(minutes=5)) }}
+  alias: "Wait 5 minutes after HA startup"
+- condition: template
+  value_template: >
+    {{ states('input_number.comfort_temp') not in ['unknown', 'unavailable', 'none'] and
+       is_number(states('input_number.comfort_temp')) }}
+  alias: "Comfort temperature must be available"
 action:
 - variables:
     var_comfort_mode: !input comfort_mode
@@ -311,10 +321,25 @@ action:
         value: "{% if second_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Cool HVAC Mode
   default: []
+- condition: template
+  value_template: >
+    {{ states(var_house_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_comfort_temperature_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_second_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_fourth_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_sf_hvac_mode_helper_id) not in ['unknown', 'unavailable', 'none', ''] and
+       states(var_ff_hvac_mode_helper_id) not in ['unknown', 'unavailable', 'none', ''] }}
+  alias: "All sensors and helpers must be available before setting climate"
 - variables:
     sf_target_hvac_mode: '{{ states(var_sf_hvac_mode_helper_id) }}'
     sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif sf_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
     sf_target_temp: '{{ states(var_comfort_temperature_id)|float(0) }}'
+- condition: template
+  value_template: >
+    {{ sf_target_hvac_mode in ['auto', 'heat_cool', 'cool', 'heat', 'fan_only', 'off'] and
+       sf_target_preset in ['Normal', 'Powerful', 'Quiet', 'off'] and
+       sf_target_temp | float(0) > 0 }}
+  alias: "Validate 2nd floor AC settings before applying"
 - service: climate.set_preset_mode
   target:
     entity_id: !input second_floor_ac
@@ -330,6 +355,12 @@ action:
     ff_target_hvac_mode: '{{ states(var_ff_hvac_mode_helper_id) }}'
     ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif ff_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
     ff_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_fourth_floor_temp_diff) }}'
+- condition: template
+  value_template: >
+    {{ ff_target_hvac_mode in ['auto', 'heat_cool', 'cool', 'heat', 'fan_only', 'off'] and
+       ff_target_preset in ['Normal', 'Powerful', 'Quiet', 'off'] and
+       ff_target_temp | float(0) > 0 }}
+  alias: "Validate 4th floor AC settings before applying"
 - service: climate.set_preset_mode
   target:
     entity_id: !input fourth_floor_ac
