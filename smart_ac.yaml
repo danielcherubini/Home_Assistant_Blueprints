@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v8.5 - Fix Condition Check)
+  name: Smart AC Control (v8.6 - Remove Startup Delay)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -213,14 +213,7 @@ trigger:
   - !input fourth_floor_temp_sensor
   for:
     minutes: 2
-condition:
-- condition: template
-  value_template: >
-    {% set uptime = states('sensor.uptime') %}
-    {{ uptime not in ['unknown', 'unavailable', 'none'] and
-       (uptime | as_datetime != None) and
-       (uptime | as_datetime | as_local > (now() - timedelta(minutes=5))) }}
-  alias: "Wait 5 minutes after HA startup"
+condition: []
 action:
 - variables:
     # Input references
