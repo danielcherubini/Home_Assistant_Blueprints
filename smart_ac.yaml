@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v8.1 - Startup Protection)
+  name: Smart AC Control (v8.2 - Independent Floor Control)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -209,6 +209,8 @@ trigger:
   entity_id:
   - !input comfort_temperature
   - !input house_temperature_sensor
+  - !input second_floor_temp_sensor
+  - !input fourth_floor_temp_sensor
   for:
     minutes: 2
 condition:
@@ -224,22 +226,27 @@ condition:
   alias: "Comfort temperature must be available"
 action:
 - variables:
-    var_comfort_mode: !input comfort_mode
-    var_heat_mode: !input heat_mode
-    var_cool_mode: !input cool_mode
-    var_comfort_preset: !input comfort_preset
-    var_heat_preset: !input heat_preset
-    var_cool_preset: !input cool_preset
-    var_heating_hysteresis: !input heating_hysteresis
-    var_cooling_hysteresis: !input cooling_hysteresis
-    var_comfort_hysteresis: !input comfort_hysteresis
-    var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
+    # Input references
+    var_comfort_temperature_id: !input comfort_temperature
     var_house_temp_sensor_id: !input house_temperature_sensor
     var_second_floor_temp_sensor_id: !input second_floor_temp_sensor
     var_fourth_floor_temp_sensor_id: !input fourth_floor_temp_sensor
     var_sf_hvac_mode_helper_id: !input second_floor_current_hvac_mode_helper
     var_ff_hvac_mode_helper_id: !input fourth_floor_current_hvac_mode_helper
-    var_comfort_temperature_id: !input comfort_temperature
+    # Hysteresis settings
+    var_heating_hysteresis: !input heating_hysteresis
+    var_cooling_hysteresis: !input cooling_hysteresis
+    var_comfort_hysteresis: !input comfort_hysteresis
+    var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
+    # HVAC modes
+    var_comfort_mode: !input comfort_mode
+    var_heat_mode: !input heat_mode
+    var_cool_mode: !input cool_mode
+    # Presets
+    var_comfort_preset: !input comfort_preset
+    var_heat_preset: !input heat_preset
+    var_cool_preset: !input cool_preset
+    # Whole house temperature calculations
     temp_diff: "{% set house_temp_str = states(var_house_temp_sensor_id) %} {% set
       comfort_temp_str = states(var_comfort_temperature_id) %} {% if house_temp_str
       not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
@@ -253,6 +260,20 @@ action:
       %} {% if comfort_temp_str not in ['unknown', 'unavailable'] %}\n  {{ (comfort_temp_str|float(0)
       + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  none\n{% endif
       %}\n"
+    # Second floor temperature checks
+    second_floor_needs_heat: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if sf_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ sf_temp_str|float(0)|round(1) < (comfort_temp_str|float(0)
+      - var_heating_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
+    second_floor_needs_cool: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if sf_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ sf_temp_str|float(0)|round(1) > (comfort_temp_str|float(0)
+      + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
+    # Fourth floor temperature checks
     fourth_floor_needs_heat: "{% set ff_temp_str = states(var_fourth_floor_temp_sensor_id)
       %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if ff_temp_str
       not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
@@ -263,12 +284,6 @@ action:
       %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if ff_temp_str
       not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
       %}\n  {{ ff_temp_str|float(0)|round(1) > ((comfort_temp_str|float(0) + var_fourth_floor_temp_diff|float(0))
-      + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
-      %}\n"
-    second_floor_needs_cool: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
-      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if sf_temp_str
-      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
-      %}\n  {{ sf_temp_str|float(0)|round(1) > (comfort_temp_str|float(0)
       + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
       %}\n"
 - choose:
@@ -297,12 +312,12 @@ action:
       target:
         entity_id: !input second_floor_current_hvac_mode_helper
       data:
-        value: '{{ var_heat_mode }}'
+        value: "{% if second_floor_needs_heat or (heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) < heating_temp_trigger) %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     - service: input_text.set_value
       target:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
-        value: "{% if fourth_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% if fourth_floor_needs_heat or (heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) < heating_temp_trigger) %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Heat HVAC Mode
   - conditions:
     - condition: template
@@ -313,12 +328,12 @@ action:
       target:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
-        value: "{% if fourth_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% if fourth_floor_needs_cool or (cooling_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) > cooling_temp_trigger) %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     - service: input_text.set_value
       target:
         entity_id: !input second_floor_current_hvac_mode_helper
       data:
-        value: "{% if second_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% if second_floor_needs_cool or (cooling_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1) > cooling_temp_trigger) %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Cool HVAC Mode
   default: []
 - condition: template
