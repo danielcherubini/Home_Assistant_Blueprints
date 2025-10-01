@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v8.4 - Fix Helper Validation)
+  name: Smart AC Control (v8.5 - Fix Condition Check)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -221,11 +221,6 @@ condition:
        (uptime | as_datetime != None) and
        (uptime | as_datetime | as_local > (now() - timedelta(minutes=5))) }}
   alias: "Wait 5 minutes after HA startup"
-- condition: template
-  value_template: >
-    {{ states('input_number.comfort_temp') not in ['unknown', 'unavailable', 'none'] and
-       is_number(states('input_number.comfort_temp')) }}
-  alias: "Comfort temperature must be available"
 action:
 - variables:
     # Input references
