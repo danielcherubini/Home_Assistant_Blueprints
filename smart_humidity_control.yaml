@@ -1,477 +1,561 @@
 blueprint:
-  name: Smart Humidity Control (v1.5)
-  description: >
-    Automatically control humidity in your home based on house mean humidity.
-    Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
-  domain: automation
-  source_url: https://github.com/danielcherubini/Home-Assistant-Blueprints/blob/main/smart_humidity_control.yaml
+    name: Smart Humidity Control (v1.6)
+    description: >
+        Automatically control humidity in your home based on house mean humidity.
+        Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
+    domain: automation
+    source_url: https://github.com/danielcherubini/Home-Assistant-Blueprints/blob/main/smart_humidity_control.yaml
 
-  input:
-    # Required entities
-    house_humidity_sensor:
-      name: House Humidity Sensor
-      description: Sensor that measures the average humidity in your house
-      selector:
-        entity:
-          filter:
-            - domain: sensor
-              device_class: humidity
+    input:
+        # Required entities
+        house_humidity_sensor:
+            name: House Humidity Sensor
+            description: Sensor that measures the average humidity in your house
+            selector:
+                entity:
+                    filter:
+                        - domain: sensor
+                          device_class: humidity
 
-    bathroom_humidity_sensor:
-      name: Bathroom Humidity Sensor
-      description: Sensor that measures humidity in the bathroom
-      selector:
-        entity:
-          filter:
-            - domain: sensor
-              device_class: humidity
+        bathroom_humidity_sensor:
+            name: Bathroom Humidity Sensor
+            description: Sensor that measures humidity in the bathroom
+            selector:
+                entity:
+                    filter:
+                        - domain: sensor
+                          device_class: humidity
 
-    fourth_floor_humidity_sensor:
-      name: 4th Floor Humidity Sensor
-      description: Sensor that measures humidity on the 4th floor
-      selector:
-        entity:
-          filter:
-            - domain: sensor
-              device_class: humidity
+        fourth_floor_humidity_sensor:
+            name: 4th Floor Humidity Sensor
+            description: Sensor that measures humidity on the 4th floor
+            selector:
+                entity:
+                    filter:
+                        - domain: sensor
+                          device_class: humidity
 
-    outdoor_weather:
-      name: Outdoor Weather Entity (Optional)
-      description: Weather entity that provides outdoor humidity data for differential mode
-      default: ""
-      selector:
-        entity:
-          filter:
-            - domain: weather
+        outdoor_weather:
+            name: Outdoor Weather Entity (Optional)
+            description: Weather entity that provides outdoor humidity data for differential mode
+            default: ""
+            selector:
+                entity:
+                    filter:
+                        - domain: weather
 
-    humidity_control_switch:
-      name: Humidity Control Switch
-      description: Switch that controls your dehumidification system (fan, AC, etc.)
-      selector:
-        entity:
-          filter:
-            - domain: switch
+        humidity_control_switch:
+            name: Humidity Control Switch
+            description: Switch that controls your dehumidification system (fan, AC, etc.)
+            selector:
+                entity:
+                    filter:
+                        - domain: switch
 
-    mode_tracker:
-      name: Mode Tracker Helper
-      description: Input text helper to track which mode triggered the system (create one in Settings > Devices & Services > Helpers)
-      selector:
-        entity:
-          filter:
-            - domain: input_text
+        override_switch:
+            name: Manual Override Switch (Optional)
+            description: Switch or input boolean that overrides all automation logic. When ON, turns system on. When OFF, turns system off.
+            default: ""
+            selector:
+                entity:
+                    filter:
+                        - domain:
+                              - switch
+                              - input_boolean
 
-    # Optional notification
-    notification_device:
-      name: Notification Device (Optional)
-      description: Mobile device to receive notifications when system turns on/off
-      default: ""
-      selector:
-        device:
-          filter:
-            - integration: mobile_app
+        mode_tracker:
+            name: Mode Tracker Helper
+            description: Input text helper to track which mode triggered the system (create one in Settings > Devices & Services > Helpers)
+            selector:
+                entity:
+                    filter:
+                        - domain: input_text
 
-    dashboard_url:
-      name: Dashboard URL (Optional)
-      description: URL path to navigate to when notification is clicked (e.g., /lovelace/humidity)
-      default: ""
-      selector:
-        text:
+        # Optional notification
+        notification_device:
+            name: Notification Device (Optional)
+            description: Mobile device to receive notifications when system turns on/off
+            default: ""
+            selector:
+                device:
+                    filter:
+                        - integration: mobile_app
 
-    # Thresholds
+        dashboard_url:
+            name: Dashboard URL (Optional)
+            description: URL path to navigate to when notification is clicked (e.g., /lovelace/humidity)
+            default: ""
+            selector:
+                text:
 
-    house_humidity_max:
-      name: House Humidity Maximum
-      description: Turn on dehumidification when house humidity reaches this level (%)
-      default: 65
-      selector:
-        number:
-          min: 50
-          max: 80
-          step: 1
-          unit_of_measurement: "%"
+        # Thresholds
 
-    house_humidity_min:
-      name: House Humidity Minimum
-      description: Turn off dehumidification when house humidity drops to this level (%)
-      default: 55
-      selector:
-        number:
-          min: 40
-          max: 70
-          step: 1
-          unit_of_measurement: "%"
+        house_humidity_max:
+            name: House Humidity Maximum
+            description: Turn on dehumidification when house humidity reaches this level (%)
+            default: 65
+            selector:
+                number:
+                    min: 50
+                    max: 80
+                    step: 1
+                    unit_of_measurement: "%"
 
-    bathroom_humidity_offset:
-      name: Bathroom Humidity Offset
-      description: Activate when bathroom humidity exceeds house mean by this amount (%)
-      default: 10
-      selector:
-        number:
-          min: 5
-          max: 30
-          step: 1
-          unit_of_measurement: "%"
+        house_humidity_min:
+            name: House Humidity Minimum
+            description: Turn off dehumidification when house humidity drops to this level (%)
+            default: 55
+            selector:
+                number:
+                    min: 40
+                    max: 70
+                    step: 1
+                    unit_of_measurement: "%"
 
-    bathroom_minimum_offset:
-      name: Bathroom Minimum Offset
-      description: Minimum offset from house mean before turning off bathroom priority (%)
-      default: 0
-      selector:
-        number:
-          min: 0
-          max: 15
-          step: 1
-          unit_of_measurement: "%"
+        bathroom_humidity_offset:
+            name: Bathroom Humidity Offset
+            description: Activate when bathroom humidity exceeds house mean by this amount (%)
+            default: 10
+            selector:
+                number:
+                    min: 5
+                    max: 30
+                    step: 1
+                    unit_of_measurement: "%"
 
-    fourth_floor_humidity_offset:
-      name: 4th Floor Humidity Offset
-      description: Activate when 4th floor humidity exceeds house mean by this amount (%)
-      default: 10
-      selector:
-        number:
-          min: 5
-          max: 30
-          step: 1
-          unit_of_measurement: "%"
+        bathroom_minimum_offset:
+            name: Bathroom Minimum Offset
+            description: Minimum offset from house mean before turning off bathroom priority (%)
+            default: 0
+            selector:
+                number:
+                    min: 0
+                    max: 15
+                    step: 1
+                    unit_of_measurement: "%"
 
-    fourth_floor_minimum_offset:
-      name: 4th Floor Minimum Offset
-      description: Minimum offset from house mean before turning off 4th floor priority (%)
-      default: 0
-      selector:
-        number:
-          min: 0
-          max: 15
-          step: 1
-          unit_of_measurement: "%"
+        fourth_floor_humidity_offset:
+            name: 4th Floor Humidity Offset
+            description: Activate when 4th floor humidity exceeds house mean by this amount (%)
+            default: 10
+            selector:
+                number:
+                    min: 5
+                    max: 30
+                    step: 1
+                    unit_of_measurement: "%"
 
-    outdoor_balance_max_modifier:
-      name: Outdoor Balance Max Modifier
-      description: Adjust house max threshold when outdoor conditions are considered (can be negative or positive %)
-      default: -5
-      selector:
-        number:
-          min: -20
-          max: 20
-          step: 1
-          unit_of_measurement: "%"
+        fourth_floor_minimum_offset:
+            name: 4th Floor Minimum Offset
+            description: Minimum offset from house mean before turning off 4th floor priority (%)
+            default: 0
+            selector:
+                number:
+                    min: 0
+                    max: 15
+                    step: 1
+                    unit_of_measurement: "%"
 
-    outdoor_balance_min_modifier:
-      name: Outdoor Balance Min Modifier
-      description: Adjust house min threshold when outdoor conditions are considered (can be negative or positive %)
-      default: 0
-      selector:
-        number:
-          min: -20
-          max: 20
-          step: 1
-          unit_of_measurement: "%"
+        outdoor_balance_max_modifier:
+            name: Outdoor Balance Max Modifier
+            description: Adjust house max threshold when outdoor conditions are considered (can be negative or positive %)
+            default: -5
+            selector:
+                number:
+                    min: -20
+                    max: 20
+                    step: 1
+                    unit_of_measurement: "%"
 
-    outdoor_difference_threshold:
-      name: Outdoor Difference Threshold
-      description: Minimum indoor-outdoor humidity difference required to activate outdoor balance mode (%)
-      default: 15
-      selector:
-        number:
-          min: 5
-          max: 40
-          step: 1
-          unit_of_measurement: "%"
+        outdoor_balance_min_modifier:
+            name: Outdoor Balance Min Modifier
+            description: Adjust house min threshold when outdoor conditions are considered (can be negative or positive %)
+            default: 0
+            selector:
+                number:
+                    min: -20
+                    max: 20
+                    step: 1
+                    unit_of_measurement: "%"
+
+        outdoor_difference_threshold:
+            name: Outdoor Difference Threshold
+            description: Minimum indoor-outdoor humidity difference required to activate outdoor balance mode (%)
+            default: 15
+            selector:
+                number:
+                    min: 5
+                    max: 40
+                    step: 1
+                    unit_of_measurement: "%"
 
 variables:
-  house_humidity_sensor: !input house_humidity_sensor
-  bathroom_humidity_sensor: !input bathroom_humidity_sensor
-  fourth_floor_humidity_sensor: !input fourth_floor_humidity_sensor
-  outdoor_weather: !input outdoor_weather
-  house_humidity_max: !input house_humidity_max
-  house_humidity_min: !input house_humidity_min
-  bathroom_humidity_offset: !input bathroom_humidity_offset
-  bathroom_minimum_offset: !input bathroom_minimum_offset
-  fourth_floor_humidity_offset: !input fourth_floor_humidity_offset
-  fourth_floor_minimum_offset: !input fourth_floor_minimum_offset
-  outdoor_balance_max_modifier: !input outdoor_balance_max_modifier
-  outdoor_balance_min_modifier: !input outdoor_balance_min_modifier
-  outdoor_difference_threshold: !input outdoor_difference_threshold
-  mode_tracker: !input mode_tracker
-  notification_device: !input notification_device
-  dashboard_url: !input dashboard_url
-  house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
-  bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
-  fourth_floor_humidity: "{{ states(fourth_floor_humidity_sensor) | float(0) }}"
-  outdoor_humidity: "{{ state_attr(outdoor_weather, 'humidity') | int(0) if outdoor_weather != '' else 0 }}"
-  humidity_diff: "{{ house_humidity - outdoor_humidity }}"
-  outdoor_balance_max_threshold: "{{ house_humidity_max + outdoor_balance_max_modifier }}"
-  outdoor_balance_min_threshold: "{{ house_humidity_min + outdoor_balance_min_modifier }}"
-  bathroom_threshold: "{{ house_humidity + bathroom_humidity_offset }}"
-  fourth_floor_threshold: "{{ house_humidity + fourth_floor_humidity_offset }}"
-  current_mode: "{{ states(mode_tracker) }}"
+    house_humidity_sensor: !input house_humidity_sensor
+    bathroom_humidity_sensor: !input bathroom_humidity_sensor
+    fourth_floor_humidity_sensor: !input fourth_floor_humidity_sensor
+    outdoor_weather: !input outdoor_weather
+    override_switch: !input override_switch
+    house_humidity_max: !input house_humidity_max
+    house_humidity_min: !input house_humidity_min
+    bathroom_humidity_offset: !input bathroom_humidity_offset
+    bathroom_minimum_offset: !input bathroom_minimum_offset
+    fourth_floor_humidity_offset: !input fourth_floor_humidity_offset
+    fourth_floor_minimum_offset: !input fourth_floor_minimum_offset
+    outdoor_balance_max_modifier: !input outdoor_balance_max_modifier
+    outdoor_balance_min_modifier: !input outdoor_balance_min_modifier
+    outdoor_difference_threshold: !input outdoor_difference_threshold
+    mode_tracker: !input mode_tracker
+    notification_device: !input notification_device
+    dashboard_url: !input dashboard_url
+    house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
+    bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
+    fourth_floor_humidity: "{{ states(fourth_floor_humidity_sensor) | float(0) }}"
+    outdoor_humidity: "{{ state_attr(outdoor_weather, 'humidity') | int(0) if outdoor_weather != '' else 0 }}"
+    humidity_diff: "{{ house_humidity - outdoor_humidity }}"
+    outdoor_balance_max_threshold: "{{ house_humidity_max + outdoor_balance_max_modifier }}"
+    outdoor_balance_min_threshold: "{{ house_humidity_min + outdoor_balance_min_modifier }}"
+    bathroom_threshold: "{{ house_humidity + bathroom_humidity_offset }}"
+    fourth_floor_threshold: "{{ house_humidity + fourth_floor_humidity_offset }}"
+    current_mode: "{{ states(mode_tracker) }}"
 
 trigger:
-  - platform: state
-    entity_id: !input house_humidity_sensor
-    id: humidity_change
+    - platform: state
+      entity_id: !input house_humidity_sensor
+      id: humidity_change
+    - platform: state
+      entity_id: !input override_switch
+      id: override_change
 
 condition: []
 
 action:
-  - choose:
-      # Bathroom priority mode - turn on when exceeds threshold, off when reaches house mean
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-          - condition: template
-            value_template: "{{ bathroom_humidity >= bathroom_threshold }}"
-          - condition: state
-            entity_id: !input humidity_control_switch
-            state: "off"
-        sequence:
-          - service: switch.turn_on
-            target:
-              entity_id: !input humidity_control_switch
-          - service: input_text.set_value
-            target:
-              entity_id: !input mode_tracker
-            data:
-              value: "bathroom"
-          - if:
-              - condition: template
-                value_template: "{{ notification_device != '' }}"
-            then:
-              - device_id: !input notification_device
-                domain: mobile_app
-                type: notify
-                title: "Smart Humidity"
-                message: "Humidity Control - On (Bathroom: {{ bathroom_humidity }}% vs house mean {{ house_humidity }}%)"
-                data:
-                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-
-      # Bathroom priority mode - turn off when reaches house mean
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-          - condition: template
-            value_template: "{{ bathroom_humidity <= (house_humidity + bathroom_minimum_offset) }}"
-          - condition: state
-            entity_id: !input humidity_control_switch
-            state: "on"
-          - condition: template
-            value_template: "{{ current_mode == 'bathroom' }}"
-        sequence:
-          - service: switch.turn_off
-            target:
-              entity_id: !input humidity_control_switch
-          - service: input_text.set_value
-            target:
-              entity_id: !input mode_tracker
-            data:
-              value: "idle"
-          - if:
-              - condition: template
-                value_template: "{{ notification_device != '' }}"
-            then:
-              - device_id: !input notification_device
-                domain: mobile_app
-                type: notify
-                title: "Smart Humidity"
-                message: "Humidity Control - Off (Bathroom reached house mean: {{ bathroom_humidity }}%)"
-                data:
-                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-
-      # 4th Floor priority mode - turn on when exceeds threshold, off when reaches house mean
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-          - condition: template
-            value_template: "{{ fourth_floor_humidity >= fourth_floor_threshold }}"
-          - condition: state
-            entity_id: !input humidity_control_switch
-            state: "off"
-        sequence:
-          - service: switch.turn_on
-            target:
-              entity_id: !input humidity_control_switch
-          - service: input_text.set_value
-            target:
-              entity_id: !input mode_tracker
-            data:
-              value: "fourth_floor"
-          - if:
-              - condition: template
-                value_template: "{{ notification_device != '' }}"
-            then:
-              - device_id: !input notification_device
-                domain: mobile_app
-                type: notify
-                title: "Smart Humidity"
-                message: "Humidity Control - On (4th Floor: {{ fourth_floor_humidity }}% vs house mean {{ house_humidity }}%)"
-                data:
-                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-
-      # 4th Floor priority mode - turn off when reaches house mean
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-          - condition: template
-            value_template: "{{ fourth_floor_humidity <= (house_humidity + fourth_floor_minimum_offset) }}"
-          - condition: state
-            entity_id: !input humidity_control_switch
-            state: "on"
-          - condition: template
-            value_template: "{{ current_mode == 'fourth_floor' }}"
-        sequence:
-          - service: switch.turn_off
-            target:
-              entity_id: !input humidity_control_switch
-          - service: input_text.set_value
-            target:
-              entity_id: !input mode_tracker
-            data:
-              value: "idle"
-          - if:
-              - condition: template
-                value_template: "{{ notification_device != '' }}"
-            then:
-              - device_id: !input notification_device
-                domain: mobile_app
-                type: notify
-                title: "Smart Humidity"
-                message: "Humidity Control - Off (4th Floor reached house mean: {{ fourth_floor_humidity }}%)"
-                data:
-                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-
-      # Outdoor Balance mode - turn on when conditions are favorable for outdoor-based dehumidification
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-          - condition: template
-            value_template: "{{ outdoor_weather != '' and humidity_diff >= outdoor_difference_threshold and house_humidity >= outdoor_balance_max_threshold }}"
-          - condition: state
-            entity_id: !input humidity_control_switch
-            state: "off"
-        sequence:
-          - service: switch.turn_on
-            target:
-              entity_id: !input humidity_control_switch
-          - service: input_text.set_value
-            target:
-              entity_id: !input mode_tracker
-            data:
-              value: "outdoor_balance"
-          - if:
-              - condition: template
-                value_template: "{{ notification_device != '' }}"
-            then:
-              - device_id: !input notification_device
-                domain: mobile_app
-                type: notify
-                title: "Smart Humidity"
-                message: "Humidity Control - On (Outdoor Balance: {{ house_humidity }}% inside vs {{ outdoor_humidity }}% outside)"
-                data:
-                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-
-      # Outdoor Balance mode - turn off when humidity drops to modified minimum threshold
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-          - condition: template
-            value_template: "{{ outdoor_weather != '' and house_humidity <= outdoor_balance_min_threshold }}"
-          - condition: state
-            entity_id: !input humidity_control_switch
-            state: "on"
-          - condition: template
-            value_template: "{{ current_mode == 'outdoor_balance' }}"
-        sequence:
-          - service: switch.turn_off
-            target:
-              entity_id: !input humidity_control_switch
-          - service: input_text.set_value
-            target:
-              entity_id: !input mode_tracker
-            data:
-              value: "idle"
-          - if:
-              - condition: template
-                value_template: "{{ notification_device != '' }}"
-            then:
-              - device_id: !input notification_device
-                domain: mobile_app
-                type: notify
-                title: "Smart Humidity"
-                message: "Humidity Control - Off (Outdoor Balance: {{ house_humidity }}% inside vs {{ outdoor_humidity }}% outside)"
-                data:
-                  url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-                  clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
-
-      # General humidity control
-      - conditions:
-          - condition: trigger
-            id: humidity_change
-        sequence:
-          - choose:
-              # Turn on dehumidification
-              - conditions:
-                  - condition: template
-                    value_template: "{{ house_humidity >= house_humidity_max }}"
-                  - condition: state
-                    entity_id: !input humidity_control_switch
-                    state: "off"
-                  - condition: template
-                    value_template: "{{ current_mode in ['idle', 'outdoor_balance'] }}"
-                sequence:
-                  - service: switch.turn_on
-                    target:
+    - choose:
+          # Manual Override - turn ON
+          - conditions:
+                - condition: trigger
+                  id: override_change
+                - condition: template
+                  value_template: "{{ override_switch != '' and is_state(override_switch, 'on') }}"
+            sequence:
+                - service: switch.turn_on
+                  target:
                       entity_id: !input humidity_control_switch
-                  - service: input_text.set_value
-                    target:
+                - service: input_text.set_value
+                  target:
                       entity_id: !input mode_tracker
-                    data:
-                      value: "general"
-                  - if:
+                  data:
+                      value: "manual_override"
+                - if:
                       - condition: template
-                        value_template: "{{ notification_device_id != '' }}"
-                    then:
+                        value_template: "{{ notification_device != '' }}"
+                  then:
                       - device_id: !input notification_device
                         domain: mobile_app
                         type: notify
                         title: "Smart Humidity"
-                        message: "Humidity Control - On (House: {{ house_humidity }}%)"
+                        message: "Humidity Control - On (Manual Override)"
                         data:
-                          clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
-              # Turn off dehumidification - only if not in priority mode
-              - conditions:
-                  - condition: template
-                    value_template: "{{ house_humidity <= house_humidity_min }}"
-                  - condition: state
-                    entity_id: !input humidity_control_switch
-                    state: "on"
-                  - condition: template
-                    value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance'] }}"
-                sequence:
-                  - service: switch.turn_off
-                    target:
+          # Manual Override - turn OFF
+          - conditions:
+                - condition: trigger
+                  id: override_change
+                - condition: template
+                  value_template: "{{ override_switch != '' and is_state(override_switch, 'off') }}"
+            sequence:
+                - service: switch.turn_off
+                  target:
                       entity_id: !input humidity_control_switch
-                  - service: input_text.set_value
-                    target:
+                - service: input_text.set_value
+                  target:
                       entity_id: !input mode_tracker
-                    data:
+                  data:
                       value: "idle"
-                  - if:
+                - if:
                       - condition: template
-                        value_template: "{{ notification_device_id != '' }}"
-                    then:
+                        value_template: "{{ notification_device != '' }}"
+                  then:
                       - device_id: !input notification_device
                         domain: mobile_app
                         type: notify
                         title: "Smart Humidity"
-                        message: "Humidity Control - Off (House: {{ house_humidity }}%)"
+                        message: "Humidity Control - Off (Manual Override)"
                         data:
-                          clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # Bathroom priority mode - turn on when exceeds threshold, off when reaches house mean
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ bathroom_humidity >= bathroom_threshold }}"
+                - condition: state
+                  entity_id: !input humidity_control_switch
+                  state: "off"
+            sequence:
+                - service: switch.turn_on
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "bathroom"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - On (Bathroom: {{ bathroom_humidity }}% vs house mean {{ house_humidity }}%)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # Bathroom priority mode - turn off when reaches house mean
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ bathroom_humidity <= (house_humidity + bathroom_minimum_offset) }}"
+                - condition: state
+                  entity_id: !input humidity_control_switch
+                  state: "on"
+                - condition: template
+                  value_template: "{{ current_mode == 'bathroom' }}"
+            sequence:
+                - service: switch.turn_off
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "idle"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - Off (Bathroom reached house mean: {{ bathroom_humidity }}%)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # 4th Floor priority mode - turn on when exceeds threshold, off when reaches house mean
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ fourth_floor_humidity >= fourth_floor_threshold }}"
+                - condition: state
+                  entity_id: !input humidity_control_switch
+                  state: "off"
+            sequence:
+                - service: switch.turn_on
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "fourth_floor"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - On (4th Floor: {{ fourth_floor_humidity }}% vs house mean {{ house_humidity }}%)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # 4th Floor priority mode - turn off when reaches house mean
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ fourth_floor_humidity <= (house_humidity + fourth_floor_minimum_offset) }}"
+                - condition: state
+                  entity_id: !input humidity_control_switch
+                  state: "on"
+                - condition: template
+                  value_template: "{{ current_mode == 'fourth_floor' }}"
+            sequence:
+                - service: switch.turn_off
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "idle"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - Off (4th Floor reached house mean: {{ fourth_floor_humidity }}%)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # Outdoor Balance mode - turn on when conditions are favorable for outdoor-based dehumidification
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ outdoor_weather != '' and humidity_diff >= outdoor_difference_threshold and house_humidity >= outdoor_balance_max_threshold }}"
+                - condition: state
+                  entity_id: !input humidity_control_switch
+                  state: "off"
+            sequence:
+                - service: switch.turn_on
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "outdoor_balance"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - On (Outdoor Balance: {{ house_humidity }}% inside vs {{ outdoor_humidity }}% outside)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # Outdoor Balance mode - turn off when humidity drops to modified minimum threshold
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ outdoor_weather != '' and house_humidity <= outdoor_balance_min_threshold }}"
+                - condition: state
+                  entity_id: !input humidity_control_switch
+                  state: "on"
+                - condition: template
+                  value_template: "{{ current_mode == 'outdoor_balance' }}"
+            sequence:
+                - service: switch.turn_off
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "idle"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - Off (Outdoor Balance: {{ house_humidity }}% inside vs {{ outdoor_humidity }}% outside)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # General humidity control
+          - conditions:
+                - condition: trigger
+                  id: humidity_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+            sequence:
+                - choose:
+                      # Turn on dehumidification
+                      - conditions:
+                            - condition: template
+                              value_template: "{{ house_humidity >= house_humidity_max }}"
+                            - condition: state
+                              entity_id: !input humidity_control_switch
+                              state: "off"
+                            - condition: template
+                              value_template: "{{ current_mode in ['idle', 'outdoor_balance'] }}"
+                        sequence:
+                            - service: switch.turn_on
+                              target:
+                                  entity_id: !input humidity_control_switch
+                            - service: input_text.set_value
+                              target:
+                                  entity_id: !input mode_tracker
+                              data:
+                                  value: "general"
+                            - if:
+                                  - condition: template
+                                    value_template: "{{ notification_device_id != '' }}"
+                              then:
+                                  - device_id: !input notification_device
+                                    domain: mobile_app
+                                    type: notify
+                                    title: "Smart Humidity"
+                                    message: "Humidity Control - On (House: {{ house_humidity }}%)"
+                                    data:
+                                        clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+                      # Turn off dehumidification - only if not in priority mode
+                      - conditions:
+                            - condition: template
+                              value_template: "{{ house_humidity <= house_humidity_min }}"
+                            - condition: state
+                              entity_id: !input humidity_control_switch
+                              state: "on"
+                            - condition: template
+                              value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance'] }}"
+                        sequence:
+                            - service: switch.turn_off
+                              target:
+                                  entity_id: !input humidity_control_switch
+                            - service: input_text.set_value
+                              target:
+                                  entity_id: !input mode_tracker
+                              data:
+                                  value: "idle"
+                            - if:
+                                  - condition: template
+                                    value_template: "{{ notification_device_id != '' }}"
+                              then:
+                                  - device_id: !input notification_device
+                                    domain: mobile_app
+                                    type: notify
+                                    title: "Smart Humidity"
+                                    message: "Humidity Control - Off (House: {{ house_humidity }}%)"
+                                    data:
+                                        clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
 mode: restart
-
