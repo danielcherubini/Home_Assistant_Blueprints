@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v8.3 - Fix Startup Condition)
+  name: Smart AC Control (v8.4 - Fix Helper Validation)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -343,12 +343,10 @@ action:
     {{ states(var_house_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
        states(var_comfort_temperature_id) not in ['unknown', 'unavailable', 'none'] and
        states(var_second_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
-       states(var_fourth_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
-       states(var_sf_hvac_mode_helper_id) not in ['unknown', 'unavailable', 'none', ''] and
-       states(var_ff_hvac_mode_helper_id) not in ['unknown', 'unavailable', 'none', ''] }}
-  alias: "All sensors and helpers must be available before setting climate"
+       states(var_fourth_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] }}
+  alias: "All sensors must be available before setting climate"
 - variables:
-    sf_target_hvac_mode: '{{ states(var_sf_hvac_mode_helper_id) }}'
+    sf_target_hvac_mode: '{% set mode = states(var_sf_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
     sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif sf_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
     sf_target_temp: '{{ states(var_comfort_temperature_id)|float(0) }}'
 - condition: template
@@ -369,7 +367,7 @@ action:
     temperature: '{{ sf_target_temp }}'
     hvac_mode: '{{ sf_target_hvac_mode }}'
 - variables:
-    ff_target_hvac_mode: '{{ states(var_ff_hvac_mode_helper_id) }}'
+    ff_target_hvac_mode: '{% set mode = states(var_ff_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
     ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif ff_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
     ff_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_fourth_floor_temp_diff) }}'
 - condition: template
