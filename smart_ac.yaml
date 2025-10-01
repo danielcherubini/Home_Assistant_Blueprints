@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v8.6 - Remove Startup Delay)
+  name: Smart AC Control (v8.7 - Remove Trigger Delay)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
@@ -211,8 +211,6 @@ trigger:
   - !input house_temperature_sensor
   - !input second_floor_temp_sensor
   - !input fourth_floor_temp_sensor
-  for:
-    minutes: 2
 condition: []
 action:
 - variables:
