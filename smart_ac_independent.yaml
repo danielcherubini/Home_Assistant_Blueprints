@@ -1,0 +1,418 @@
+blueprint:
+  name: Smart AC Control (v10.0 - Independent Floor Control)
+  description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides.
+  domain: automation
+  source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
+  input:
+    heating_hysteresis:
+      name: Heating Hysteresis (°C)
+      description: Temperature difference before heating is activated.
+      selector:
+        number:
+          min: 0.1
+          max: 5.0
+          step: 0.1
+          mode: box
+      default: 0.8
+    cooling_hysteresis:
+      name: Cooling Hysteresis (°C)
+      description: Temperature difference before cooling is activated.
+      selector:
+        number:
+          min: 0.1
+          max: 5.0
+          step: 0.1
+          mode: box
+      default: 1.0
+    comfort_hysteresis:
+      name: Comfort Hysteresis (°C)
+      description: Temperature difference for "comfort" mode.
+      selector:
+        number:
+          min: 0.1
+          max: 5.0
+          step: 0.1
+          mode: box
+      default: 0.2
+    fourth_floor_temperature_difference:
+      name: 4th Floor Temperature Difference (°C)
+      description: Temperature difference for the 4th floor target relative to comfort
+        temp.
+      selector:
+        number:
+          min: -5.0
+          max: 5.0
+          step: 0.1
+          mode: box
+      default: 1.5
+    second_floor_ac:
+      name: 2nd Floor AC Entity
+      description: The climate entity for the 2nd floor.
+      selector:
+        entity:
+          domain:
+          - climate
+          multiple: false
+    second_floor_temp_sensor:
+      name: 2nd Floor Temperature Sensor
+      description: The temperature sensor for the 2nd floor.
+      selector:
+        entity:
+          domain:
+          - sensor
+          multiple: false
+    fourth_floor_ac:
+      name: 4th Floor AC Entity
+      description: The climate entity for the 4th floor.
+      selector:
+        entity:
+          domain:
+          - climate
+          multiple: false
+    fourth_floor_temp_sensor:
+      name: 4th Floor Temperature Sensor
+      description: The temperature sensor for the 4th floor.
+      selector:
+        entity:
+          domain:
+          - sensor
+          multiple: false
+    house_temperature_sensor:
+      name: House Mean Temperature Sensor
+      description: The sensor providing the average house temperature.
+      selector:
+        entity:
+          domain:
+          - sensor
+          multiple: false
+    comfort_preset:
+      name: Comfort Preset
+      description: The preset to use when in the comfort zone.
+      selector:
+        select:
+          options:
+          - Normal
+          - Powerful
+          - Quiet
+          - 'off'
+          sort: false
+          custom_value: false
+          multiple: false
+      default: Normal
+    heat_preset:
+      name: Heat Preset
+      description: The preset to use when in the heating zone.
+      selector:
+        select:
+          options:
+          - Normal
+          - Powerful
+          - Quiet
+          - 'off'
+          sort: false
+          custom_value: false
+          multiple: false
+      default: Powerful
+    cool_preset:
+      name: Cool Preset
+      description: The preset to use when in the cooling zone.
+      selector:
+        select:
+          options:
+          - Normal
+          - Powerful
+          - Quiet
+          - 'off'
+          sort: false
+          custom_value: false
+          multiple: false
+      default: Powerful
+    comfort_mode:
+      name: Comfort Mode (HVAC)
+      description: The HVAC mode to use when in the comfort zone.
+      selector:
+        select:
+          options:
+          - auto
+          - heat_cool
+          - cool
+          - heat
+          - fan_only
+          - 'off'
+          sort: false
+          custom_value: false
+          multiple: false
+      default: fan_only
+    heat_mode:
+      name: Heat Mode (HVAC)
+      description: The HVAC mode to use when in the heating zone.
+      selector:
+        select:
+          options:
+          - auto
+          - heat_cool
+          - cool
+          - heat
+          - fan_only
+          - 'off'
+          sort: false
+          custom_value: false
+          multiple: false
+      default: heat
+    cool_mode:
+      name: Cool Mode (HVAC)
+      description: The HVAC mode to use when in the cooling zone.
+      selector:
+        select:
+          options:
+          - auto
+          - heat_cool
+          - cool
+          - heat
+          - fan_only
+          - 'off'
+          sort: false
+          custom_value: false
+          multiple: false
+      default: cool
+    second_floor_current_hvac_mode_helper:
+      name: 2nd Floor AC Current HVAC Mode Helper
+      description: Helper entity (input_text) to store the current HVAC mode of the
+        2nd floor AC unit.
+      selector:
+        entity:
+          domain:
+          - input_text
+          multiple: false
+      default: input_text.second_floor_ac_hvac_mode
+    fourth_floor_current_hvac_mode_helper:
+      name: 4th Floor AC Current HVAC Mode Helper
+      description: Helper entity (input_text) to store the current HVAC mode of the
+        4th floor AC unit.
+      selector:
+        entity:
+          domain:
+          - input_text
+          multiple: false
+      default: input_text.fourth_floor_ac_hvac_mode
+    comfort_temperature:
+      name: Comfort Temperature Entity
+      description: The input_number entity that controls the target comfort temperature.
+      selector:
+        entity:
+          domain:
+          - input_number
+          multiple: false
+      default: input_number.comfort_temp
+    notification_device:
+      name: Notification Device (Optional)
+      description: Mobile device to receive notifications when HVAC mode changes
+      default: ""
+      selector:
+        device:
+          filter:
+          - integration: mobile_app
+    dashboard_url:
+      name: Dashboard URL (Optional)
+      description: URL path to navigate to when notification is clicked (e.g., /lovelace/climate)
+      default: ""
+      selector:
+        text:
+trigger:
+- platform: state
+  entity_id:
+  - !input comfort_temperature
+  - !input house_temperature_sensor
+  - !input second_floor_temp_sensor
+  - !input fourth_floor_temp_sensor
+condition: []
+action:
+- variables:
+    # Input references
+    var_comfort_temperature_id: !input comfort_temperature
+    var_house_temp_sensor_id: !input house_temperature_sensor
+    var_second_floor_temp_sensor_id: !input second_floor_temp_sensor
+    var_fourth_floor_temp_sensor_id: !input fourth_floor_temp_sensor
+    var_sf_hvac_mode_helper_id: !input second_floor_current_hvac_mode_helper
+    var_ff_hvac_mode_helper_id: !input fourth_floor_current_hvac_mode_helper
+    var_notification_device: !input notification_device
+    var_dashboard_url: !input dashboard_url
+    # Hysteresis settings
+    var_heating_hysteresis: !input heating_hysteresis
+    var_cooling_hysteresis: !input cooling_hysteresis
+    var_comfort_hysteresis: !input comfort_hysteresis
+    var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
+    # HVAC modes
+    var_comfort_mode: !input comfort_mode
+    var_heat_mode: !input heat_mode
+    var_cool_mode: !input cool_mode
+    # Presets
+    var_comfort_preset: !input comfort_preset
+    var_heat_preset: !input heat_preset
+    var_cool_preset: !input cool_preset
+    # Whole house temperature calculations
+    temp_diff: "{% set house_temp_str = states(var_house_temp_sensor_id) %} {% set
+      comfort_temp_str = states(var_comfort_temperature_id) %} {% if house_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ (house_temp_str|float(0) - comfort_temp_str|float(0))|round(1) }}\n{%
+      else %}\n  none\n{% endif %}\n"
+    heating_temp_trigger: "{% set comfort_temp_str = states(var_comfort_temperature_id)
+      %} {% if comfort_temp_str not in ['unknown', 'unavailable'] %}\n  {{ (comfort_temp_str|float(0)
+      - var_heating_hysteresis|float(0))|round(1) }}\n{% else %}\n  none\n{% endif
+      %}\n"
+    cooling_temp_trigger: "{% set comfort_temp_str = states(var_comfort_temperature_id)
+      %} {% if comfort_temp_str not in ['unknown', 'unavailable'] %}\n  {{ (comfort_temp_str|float(0)
+      + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  none\n{% endif
+      %}\n"
+    # Second floor temperature checks
+    second_floor_needs_heat: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if sf_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ sf_temp_str|float(0)|round(1) < (comfort_temp_str|float(0)
+      - var_heating_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
+    second_floor_needs_cool: "{% set sf_temp_str = states(var_second_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if sf_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ sf_temp_str|float(0)|round(1) > (comfort_temp_str|float(0)
+      + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
+    # Fourth floor temperature checks
+    fourth_floor_needs_heat: "{% set ff_temp_str = states(var_fourth_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if ff_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ ff_temp_str|float(0)|round(1) < ((comfort_temp_str|float(0) + var_fourth_floor_temp_diff|float(0))
+      - var_heating_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
+    fourth_floor_needs_cool: "{% set ff_temp_str = states(var_fourth_floor_temp_sensor_id)
+      %} {% set comfort_temp_str = states(var_comfort_temperature_id) %} {% if ff_temp_str
+      not in ['unknown', 'unavailable'] and comfort_temp_str not in ['unknown', 'unavailable']
+      %}\n  {{ ff_temp_str|float(0)|round(1) > ((comfort_temp_str|float(0) + var_fourth_floor_temp_diff|float(0))
+      + var_cooling_hysteresis|float(0))|round(1) }}\n{% else %}\n  false\n{% endif
+      %}\n"
+- choose:
+  - conditions:
+    - condition: template
+      value_template: '{{ temp_diff is not none and temp_diff >= (0 - var_comfort_hysteresis|float(0))
+        and temp_diff <= var_comfort_hysteresis|float(0) }}'
+    sequence:
+    - service: input_text.set_value
+      target:
+        entity_id: !input second_floor_current_hvac_mode_helper
+      data:
+        value: '{{ var_comfort_mode }}'
+    - service: input_text.set_value
+      target:
+        entity_id: !input fourth_floor_current_hvac_mode_helper
+      data:
+        value: '{{ var_comfort_mode }}'
+    alias: Set Comfort HVAC Mode
+  - conditions:
+    - condition: template
+      value_template: '{{ heating_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1)
+        < heating_temp_trigger }}'
+    sequence:
+    - service: input_text.set_value
+      target:
+        entity_id: !input second_floor_current_hvac_mode_helper
+      data:
+        value: "{% if second_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+    - service: input_text.set_value
+      target:
+        entity_id: !input fourth_floor_current_hvac_mode_helper
+      data:
+        value: "{% if fourth_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+    alias: Set Heat HVAC Mode
+  - conditions:
+    - condition: template
+      value_template: '{{ cooling_temp_trigger is not none and states(var_house_temp_sensor_id)|float(0)|round(1)
+        > cooling_temp_trigger }}'
+    sequence:
+    - service: input_text.set_value
+      target:
+        entity_id: !input fourth_floor_current_hvac_mode_helper
+      data:
+        value: "{% if fourth_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+    - service: input_text.set_value
+      target:
+        entity_id: !input second_floor_current_hvac_mode_helper
+      data:
+        value: "{% if second_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+    alias: Set Cool HVAC Mode
+  default: []
+- condition: template
+  value_template: >
+    {{ states(var_house_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_comfort_temperature_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_second_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] and
+       states(var_fourth_floor_temp_sensor_id) not in ['unknown', 'unavailable', 'none'] }}
+  alias: "All sensors must be available before setting climate"
+- variables:
+    sf_previous_mode: '{{ states(var_sf_hvac_mode_helper_id) }}'
+    ff_previous_mode: '{{ states(var_ff_hvac_mode_helper_id) }}'
+    sf_target_hvac_mode: '{% set mode = states(var_sf_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
+    sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif sf_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
+    sf_target_temp: '{{ states(var_comfort_temperature_id)|float(0) }}'
+    ff_target_hvac_mode: '{% set mode = states(var_ff_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
+    ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif ff_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
+    ff_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_fourth_floor_temp_diff) }}'
+    sf_mode_changed: '{{ sf_previous_mode not in ["unknown", "unavailable", "none", ""] and sf_target_hvac_mode != sf_previous_mode }}'
+    ff_mode_changed: '{{ ff_previous_mode not in ["unknown", "unavailable", "none", ""] and ff_target_hvac_mode != ff_previous_mode }}'
+- condition: template
+  value_template: >
+    {{ sf_target_hvac_mode in ['auto', 'heat_cool', 'cool', 'heat', 'fan_only', 'off'] and
+       sf_target_preset in ['Normal', 'Powerful', 'Quiet', 'off'] and
+       sf_target_temp | float(0) > 0 and
+       ff_target_hvac_mode in ['auto', 'heat_cool', 'cool', 'heat', 'fan_only', 'off'] and
+       ff_target_preset in ['Normal', 'Powerful', 'Quiet', 'off'] and
+       ff_target_temp | float(0) > 0 }}
+  alias: "Validate both floor AC settings before applying"
+- parallel:
+  - sequence:
+    - service: climate.set_preset_mode
+      target:
+        entity_id: !input second_floor_ac
+      data:
+        preset_mode: '{{ sf_target_preset }}'
+    - service: climate.set_temperature
+      target:
+        entity_id: !input second_floor_ac
+      data:
+        temperature: '{{ sf_target_temp }}'
+        hvac_mode: '{{ sf_target_hvac_mode }}'
+    - if:
+      - condition: template
+        value_template: '{{ var_notification_device != "" and sf_mode_changed }}'
+      then:
+      - device_id: !input notification_device
+        domain: mobile_app
+        type: notify
+        title: "Smart AC - 2nd Floor"
+        message: "Mode: {{ sf_target_hvac_mode }} | Temp: {{ sf_target_temp }}°C | Preset: {{ sf_target_preset }}"
+        data:
+          url: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
+          clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
+  - sequence:
+    - service: climate.set_preset_mode
+      target:
+        entity_id: !input fourth_floor_ac
+      data:
+        preset_mode: '{{ ff_target_preset }}'
+    - service: climate.set_temperature
+      target:
+        entity_id: !input fourth_floor_ac
+      data:
+        temperature: '{{ ff_target_temp }}'
+        hvac_mode: '{{ ff_target_hvac_mode }}'
+    - if:
+      - condition: template
+        value_template: '{{ var_notification_device != "" and ff_mode_changed }}'
+      then:
+      - device_id: !input notification_device
+        domain: mobile_app
+        type: notify
+        title: "Smart AC - 4th Floor"
+        message: "Mode: {{ ff_target_hvac_mode }} | Temp: {{ ff_target_temp }}°C | Preset: {{ ff_target_preset }}"
+        data:
+          url: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
+          clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
