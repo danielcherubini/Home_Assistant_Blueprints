@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v1.1)
+  name: Smart AC Control Independent (v1.2)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -88,8 +88,6 @@ blueprint:
         entity:
           domain:
           - sensor
-          device_class:
-          - temperature
           multiple: false
     comfort_preset:
       name: Comfort Preset
