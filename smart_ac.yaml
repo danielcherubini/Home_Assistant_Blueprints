@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control (v9.0 - Parallel Control & Notifications)
+  name: Smart AC Control (v9.1 - Parallel Control & Notifications)
   description: Automatically adjusts AC based on comfort temperature and house temperature.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac.yaml
