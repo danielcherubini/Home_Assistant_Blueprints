@@ -60,6 +60,8 @@ blueprint:
         entity:
           domain:
           - sensor
+          device_class:
+          - temperature
           multiple: false
     fourth_floor_ac:
       name: 4th Floor AC Entity
@@ -76,6 +78,8 @@ blueprint:
         entity:
           domain:
           - sensor
+          device_class:
+          - temperature
           multiple: false
     house_temperature_sensor:
       name: House Mean Temperature Sensor
@@ -84,6 +88,8 @@ blueprint:
         entity:
           domain:
           - sensor
+          device_class:
+          - temperature
           multiple: false
     comfort_preset:
       name: Comfort Preset
@@ -207,7 +213,6 @@ blueprint:
     notification_device:
       name: Notification Device (Optional)
       description: Mobile device to receive notifications when HVAC mode changes
-      default: ""
       selector:
         device:
           filter:
