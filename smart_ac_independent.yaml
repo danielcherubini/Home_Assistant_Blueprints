@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v1.2)
+  name: Smart AC Control Independent (v1.3)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -44,7 +44,7 @@ blueprint:
           max: 5.0
           step: 0.1
           mode: box
-      default: 1.5
+      default: -1.5
     second_floor_ac:
       name: 2nd Floor AC Entity
       description: The climate entity for the 2nd floor.
@@ -319,12 +319,12 @@ action:
       target:
         entity_id: !input second_floor_current_hvac_mode_helper
       data:
-        value: "{% if second_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% set sf_current_mode = states(var_sf_hvac_mode_helper_id) %}\n{% set sf_temp = states(var_second_floor_temp_sensor_id)|float(0) %}\n{% set comfort_temp = states(var_comfort_temperature_id)|float(0) %}\n{% if sf_current_mode == var_heat_mode and sf_temp >= comfort_temp %}\n  {{ var_comfort_mode }}\n{% elif sf_current_mode == var_cool_mode %}\n  {{ var_comfort_mode }}\n{% elif second_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     - service: input_text.set_value
       target:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
-        value: "{% if fourth_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% set ff_current_mode = states(var_ff_hvac_mode_helper_id) %}\n{% set ff_temp = states(var_fourth_floor_temp_sensor_id)|float(0) %}\n{% set comfort_temp = states(var_comfort_temperature_id)|float(0) %}\n{% set ff_target_temp = comfort_temp + var_fourth_floor_temp_diff|float(0) %}\n{% if ff_current_mode == var_heat_mode and ff_temp >= ff_target_temp %}\n  {{ var_comfort_mode }}\n{% elif ff_current_mode == var_cool_mode %}\n  {{ var_comfort_mode }}\n{% elif fourth_floor_needs_heat %}\n  {{ var_heat_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Heat HVAC Mode
   - conditions:
     - condition: template
@@ -335,12 +335,12 @@ action:
       target:
         entity_id: !input fourth_floor_current_hvac_mode_helper
       data:
-        value: "{% if fourth_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% set ff_current_mode = states(var_ff_hvac_mode_helper_id) %}\n{% set ff_temp = states(var_fourth_floor_temp_sensor_id)|float(0) %}\n{% set comfort_temp = states(var_comfort_temperature_id)|float(0) %}\n{% set ff_target_temp = comfort_temp + var_fourth_floor_temp_diff|float(0) %}\n{% if ff_current_mode == var_cool_mode and ff_temp <= ff_target_temp %}\n  {{ var_comfort_mode }}\n{% elif ff_current_mode == var_heat_mode %}\n  {{ var_comfort_mode }}\n{% elif fourth_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     - service: input_text.set_value
       target:
         entity_id: !input second_floor_current_hvac_mode_helper
       data:
-        value: "{% if second_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
+        value: "{% set sf_current_mode = states(var_sf_hvac_mode_helper_id) %}\n{% set sf_temp = states(var_second_floor_temp_sensor_id)|float(0) %}\n{% set comfort_temp = states(var_comfort_temperature_id)|float(0) %}\n{% if sf_current_mode == var_cool_mode and sf_temp <= comfort_temp %}\n  {{ var_comfort_mode }}\n{% elif sf_current_mode == var_heat_mode %}\n  {{ var_comfort_mode }}\n{% elif second_floor_needs_cool %}\n  {{ var_cool_mode }}\n{% else %}\n  {{ var_comfort_mode }}\n{% endif %}\n"
     alias: Set Cool HVAC Mode
   default: []
 - condition: template
