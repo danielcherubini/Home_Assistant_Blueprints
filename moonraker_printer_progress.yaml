@@ -1,0 +1,254 @@
+blueprint:
+  name: Moonraker Printer Progress Notification (v1.0)
+  description: Sends notifications for Moonraker printer progress, completion, and error states.
+  author: Adapted for Moonraker
+  homeassistant:
+    min_version: 2024.6.0
+    domain: automation
+
+input:
+  progress_entity:
+    name: Progress Entity
+    description: The progress sensor for the Moonraker printer (sensor.voron_progress).
+    selector:
+      entity:
+        domain: sensor
+
+  print_state_entity:
+    name: Print State Entity
+    description: The current print state sensor (sensor.voron_current_print_state).
+    selector:
+      entity:
+        domain: sensor
+
+  print_message_entity:
+    name: Print Message Entity (Optional)
+    description: The current print message sensor for error details (sensor.voron_current_print_message).
+    default: ""
+    selector:
+      entity:
+        domain: sensor
+
+  notify_device:
+    name: Notification Device
+    description: The device to send notifications to.
+    selector:
+      device:
+        integration: mobile_app
+
+  percentage_divisor:
+    name: Notification Frequency
+    description: Notify when the percentage complete is divisible by this number. Use 1 to be notified on every percentage change.
+    selector:
+      select:
+        options:
+          - "1"
+          - "2"
+          - "5"
+          - "10"
+    default: "5"
+
+  thumbnail_entity:
+    name: Printer Thumbnail Camera
+    description: The thumbnail camera entity for the printer (camera.voron_thumbnail).
+    default: "camera.voron_thumbnail"
+    selector:
+      entity:
+        domain: camera
+
+  dashboard_url:
+    name: Dashboard URL (Optional)
+    description: The path to open when the notification is clicked (e.g., '/dashboard-example/example', not the full URL).
+    default: ""
+
+mode: single
+max_exceeded: silent
+
+variables:
+  progress_entity: !input progress_entity
+  notify_device: !input notify_device
+  percentage_divisor: !input percentage_divisor
+  thumbnail_entity: !input thumbnail_entity
+  dashboard_url: !input dashboard_url
+  print_state_entity: !input print_state_entity
+  print_message_entity_input: !input print_message_entity
+  print_message_entity: "{{ print_message_entity_input if print_message_entity_input != '' else none }}"
+  printer_device: "{{ device_id(progress_entity) }}"
+  notification_group: "{{ device_attr(printer_device, 'name') | slugify }}"
+  filename_entity: "{{ device_entities(printer_device) | select('search', '_filename') | first | default('', true) }}"
+  print_duration_entity: "{{ device_entities(printer_device) | select('search', '_print_duration') | first | default('', true) }}"
+  print_time_left_entity: "{{ device_entities(printer_device) | select('search', '_print_time_left') | first | default('', true) }}"
+  print_eta_entity: "{{ device_entities(printer_device) | select('search', '_print_eta') | first | default('', true) }}"
+  current_layer_entity: "{{ device_entities(printer_device) | select('search', '_current_layer') | first | default('', true) }}"
+  total_layer_entity: "{{ device_entities(printer_device) | select('search', '_total_layer') | first | default('', true) }}"
+
+trigger:
+  - platform: state
+    entity_id: !input progress_entity
+  - platform: state
+    entity_id: !input print_state_entity
+
+condition: []
+
+action:
+  - choose:
+      # Print progress notifications
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id == progress_entity }}"
+          - condition: template
+            value_template: "{{ states(progress_entity) not in ['unknown', 'unavailable'] }}"
+          - condition: template
+            value_template: "{{ states(progress_entity) | float(0) < 100 }}"
+          - condition: template
+            value_template: "{{ (states(progress_entity) | float(0) * 100) | int(0) % (percentage_divisor | int) == 0 }}"
+          - condition: template
+            value_template: "{{ states(print_state_entity) == 'printing' }}"
+          - condition: template
+            value_template: "{{ notify_device != '' }}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            title: "Printing: {{ (states(progress_entity) | float(0) * 100) | int(0) }}%\nLayer: {{ (states(current_layer_entity)|default('?', true)) }}/{{ (states(total_layer_entity)|default('?', true)) }}"
+            message: "{{ states(filename_entity)|default('Unknown file', true) }}"
+            data:
+              chronometer: true
+              when: "{{ as_timestamp(states(print_eta_entity))|int if print_eta_entity != '' and states(print_eta_entity) not in ['unknown', 'unavailable'] else 0 }}"
+              progress: "{{ (states(progress_entity) | float(0) * 100) | int(0) }}"
+              progress_max: 100
+              image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
+              url: "{{ dashboard_url }}"
+              clickAction: "{{ dashboard_url }}"
+              group: "{{ notification_group }}"
+              channel: "{{ notification_group }}"
+              tag: "{{ notification_group }}"
+              alert_once: true
+              sticky: true
+              push:
+                interruption-level: passive
+
+      # Print completion
+      - conditions:
+          - condition: template
+            value_template: "{{ notify_device != '' }}"
+          - condition: template
+            value_template: "{{ states(print_state_entity) == 'complete' }}"
+          - condition: or
+            conditions:
+              - condition: and
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.entity_id == print_state_entity }}"
+                  - condition: template
+                    value_template: "{{ trigger.from_state.state != 'complete' }}"
+              - condition: and
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.entity_id == progress_entity }}"
+                  - condition: template
+                    value_template: "{{ (states(progress_entity) | float(0) * 100) | int(0) >= 100 }}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            title: "🎉 Print Complete!"
+            message: "{{ states(filename_entity)|default('Print', true) }} has finished successfully"
+            data:
+              image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
+              url: "{{ dashboard_url }}"
+              clickAction: "{{ dashboard_url }}"
+              group: "{{ notification_group }}"
+              channel: "{{ notification_group }}"
+              tag: "{{ notification_group }}"
+              sticky: true
+              alert_once: true
+              push:
+                interruption-level: time-sensitive
+
+      # Critical error status notifications
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id == print_state_entity }}"
+          - condition: template
+            value_template: "{{ notify_device != '' }}"
+          - condition: template
+            value_template: "{{ states(print_state_entity) == 'error' }}"
+          - condition: template
+            value_template: "{{ trigger.from_state.state != 'error' }}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            title: "🚨 Print Error!"
+            message: |
+              {% set file_name = states(filename_entity)|default('current print', true) %}
+              {% set error_msg = states(print_message_entity)|default('Unknown error', true) if print_message_entity != none else 'Print error occurred' %}
+              ⚠️ Error during {{ file_name }}!
+
+              Details: {{ error_msg }}
+            data:
+              image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
+              url: "{{ dashboard_url }}"
+              clickAction: "{{ dashboard_url }}"
+              group: "{{ notification_group }}"
+              channel: "{{ notification_group }}"
+              tag: "{{ notification_group }}_error"
+              sticky: true
+              alert_once: false
+              push:
+                interruption-level: time-sensitive
+
+      # Print cancelled notification
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id == print_state_entity }}"
+          - condition: template
+            value_template: "{{ notify_device != '' }}"
+          - condition: template
+            value_template: "{{ states(print_state_entity) == 'cancelled' }}"
+          - condition: template
+            value_template: "{{ trigger.from_state.state not in ['cancelled', 'standby', 'unknown', 'unavailable'] }}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            title: "🛑 Print Cancelled"
+            message: "{{ states(filename_entity)|default('Print', true) }} was cancelled"
+            data:
+              image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
+              url: "{{ dashboard_url }}"
+              clickAction: "{{ dashboard_url }}"
+              group: "{{ notification_group }}"
+              channel: "{{ notification_group }}"
+              tag: "{{ notification_group }}_cancelled"
+              alert_once: true
+              push:
+                interruption-level: passive
+
+      # Print paused notification
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id == print_state_entity }}"
+          - condition: template
+            value_template: "{{ notify_device != '' }}"
+          - condition: template
+            value_template: "{{ states(print_state_entity) == 'paused' }}"
+          - condition: template
+            value_template: "{{ trigger.from_state.state == 'printing' }}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            title: "⏸️ Print Paused"
+            message: "{{ states(filename_entity)|default('Print', true) }} has been paused at {{ (states(progress_entity) | float(0) * 100) | int(0) }}%"
+            data:
+              image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
+              url: "{{ dashboard_url }}"
+              clickAction: "{{ dashboard_url }}"
+              group: "{{ notification_group }}"
+              channel: "{{ notification_group }}"
+              tag: "{{ notification_group }}_paused"
+              alert_once: true
+              push:
+                interruption-level: active
