@@ -106,7 +106,7 @@ action:
           - condition: template
             value_template: "{{ states(progress_entity) | float(0) < 100 }}"
           - condition: template
-            value_template: "{{ (states(progress_entity) | float(0) * 100) | int(0) % (percentage_divisor | int) == 0 }}"
+            value_template: "{{ states(progress_entity) | int(0) % (percentage_divisor | int) == 0 }}"
           - condition: template
             value_template: "{{ states(print_state_entity) == 'printing' }}"
           - condition: template
@@ -115,12 +115,12 @@ action:
           - device_id: !input notify_device
             domain: mobile_app
             type: notify
-            title: "Printing: {{ (states(progress_entity) | float(0) * 100) | int(0) }}%\nLayer: {{ (states(current_layer_entity)|default('?', true)) }}/{{ (states(total_layer_entity)|default('?', true)) }}"
+            title: "Printing: {{ states(progress_entity) | int(0) }}%\nLayer: {{ (states(current_layer_entity)|default('?', true)) }}/{{ (states(total_layer_entity)|default('?', true)) }}"
             message: "{{ states(filename_entity)|default('Unknown file', true) }}"
             data:
               chronometer: true
               when: "{{ as_timestamp(states(print_eta_entity))|int if print_eta_entity != '' and states(print_eta_entity) not in ['unknown', 'unavailable'] else 0 }}"
-              progress: "{{ (states(progress_entity) | float(0) * 100) | int(0) }}"
+              progress: "{{ states(progress_entity) | int(0) }}"
               progress_max: 100
               image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
               url: "{{ dashboard_url }}"
@@ -152,7 +152,7 @@ action:
                   - condition: template
                     value_template: "{{ trigger.entity_id == progress_entity }}"
                   - condition: template
-                    value_template: "{{ (states(progress_entity) | float(0) * 100) | int(0) >= 100 }}"
+                    value_template: "{{ states(progress_entity) | int(0) >= 100 }}"
         sequence:
           - device_id: !input notify_device
             domain: mobile_app
@@ -246,7 +246,7 @@ action:
             domain: mobile_app
             type: notify
             title: "⏸️ Print Paused"
-            message: "{{ states(filename_entity)|default('Print', true) }} has been paused at {{ (states(progress_entity) | float(0) * 100) | int(0) }}%"
+            message: "{{ states(filename_entity)|default('Print', true) }} has been paused at {{ states(progress_entity) | int(0) }}%"
             data:
               image: "{{ ('/api/camera_proxy/' ~ thumbnail_entity) if thumbnail_entity != '' else '' }}"
               url: "{{ dashboard_url }}"
