@@ -11,14 +11,16 @@ blueprint:
       description: The progress sensor for the Moonraker printer (sensor.voron_progress).
       selector:
         entity:
-          domain: sensor
+          domain:
+          - sensor
 
     print_state_entity:
       name: Print State Entity
       description: The current print state sensor (sensor.voron_current_print_state).
       selector:
         entity:
-          domain: sensor
+          domain:
+          - sensor
 
     print_message_entity:
       name: Print Message Entity (Optional)
@@ -26,7 +28,8 @@ blueprint:
       default: ""
       selector:
         entity:
-          domain: sensor
+          domain:
+          - sensor
 
     notify_device:
       name: Notification Device
@@ -53,12 +56,15 @@ blueprint:
       default: "camera.voron_thumbnail"
       selector:
         entity:
-          domain: camera
+          domain:
+          - camera
 
     dashboard_url:
       name: Dashboard URL (Optional)
       description: The path to open when the notification is clicked (e.g., '/dashboard-example/example', not the full URL).
       default: ""
+      selector:
+        text:
 
 mode: single
 max_exceeded: silent
