@@ -5,61 +5,60 @@ blueprint:
   domain: automation
   homeassistant:
     min_version: 2024.6.0
+  input:
+    progress_entity:
+      name: Progress Entity
+      description: The progress sensor for the Moonraker printer (sensor.voron_progress).
+      selector:
+        entity:
+          domain: sensor
 
-input:
-  progress_entity:
-    name: Progress Entity
-    description: The progress sensor for the Moonraker printer (sensor.voron_progress).
-    selector:
-      entity:
-        domain: sensor
+    print_state_entity:
+      name: Print State Entity
+      description: The current print state sensor (sensor.voron_current_print_state).
+      selector:
+        entity:
+          domain: sensor
 
-  print_state_entity:
-    name: Print State Entity
-    description: The current print state sensor (sensor.voron_current_print_state).
-    selector:
-      entity:
-        domain: sensor
+    print_message_entity:
+      name: Print Message Entity (Optional)
+      description: The current print message sensor for error details (sensor.voron_current_print_message).
+      default: ""
+      selector:
+        entity:
+          domain: sensor
 
-  print_message_entity:
-    name: Print Message Entity (Optional)
-    description: The current print message sensor for error details (sensor.voron_current_print_message).
-    default: ""
-    selector:
-      entity:
-        domain: sensor
+    notify_device:
+      name: Notification Device
+      description: The device to send notifications to.
+      selector:
+        device:
+          integration: mobile_app
 
-  notify_device:
-    name: Notification Device
-    description: The device to send notifications to.
-    selector:
-      device:
-        integration: mobile_app
+    percentage_divisor:
+      name: Notification Frequency
+      description: Notify when the percentage complete is divisible by this number. Use 1 to be notified on every percentage change.
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+            - "5"
+            - "10"
+      default: "5"
 
-  percentage_divisor:
-    name: Notification Frequency
-    description: Notify when the percentage complete is divisible by this number. Use 1 to be notified on every percentage change.
-    selector:
-      select:
-        options:
-          - "1"
-          - "2"
-          - "5"
-          - "10"
-    default: "5"
+    thumbnail_entity:
+      name: Printer Thumbnail Camera
+      description: The thumbnail camera entity for the printer (camera.voron_thumbnail).
+      default: "camera.voron_thumbnail"
+      selector:
+        entity:
+          domain: camera
 
-  thumbnail_entity:
-    name: Printer Thumbnail Camera
-    description: The thumbnail camera entity for the printer (camera.voron_thumbnail).
-    default: "camera.voron_thumbnail"
-    selector:
-      entity:
-        domain: camera
-
-  dashboard_url:
-    name: Dashboard URL (Optional)
-    description: The path to open when the notification is clicked (e.g., '/dashboard-example/example', not the full URL).
-    default: ""
+    dashboard_url:
+      name: Dashboard URL (Optional)
+      description: The path to open when the notification is clicked (e.g., '/dashboard-example/example', not the full URL).
+      default: ""
 
 mode: single
 max_exceeded: silent
