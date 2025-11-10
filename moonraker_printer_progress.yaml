@@ -2,9 +2,9 @@ blueprint:
   name: Moonraker Printer Progress Notification (v1.0)
   description: Sends notifications for Moonraker printer progress, completion, and error states.
   author: Adapted for Moonraker
+  domain: automation
   homeassistant:
     min_version: 2024.6.0
-    domain: automation
 
 input:
   progress_entity:
