@@ -1,5 +1,5 @@
 blueprint:
-    name: Smart Humidity Control (v1.6)
+    name: Smart Humidity Control (v1.7)
     description: >
         Automatically control humidity in your home based on house mean humidity.
         Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
@@ -189,6 +189,17 @@ blueprint:
                     step: 1
                     unit_of_measurement: "%"
 
+        minimum_activation_threshold:
+            name: Minimum Activation Threshold
+            description: System will not automatically activate if house humidity is below this level (%) - manual overrides still work
+            default: 45
+            selector:
+                number:
+                    min: 30
+                    max: 60
+                    step: 1
+                    unit_of_measurement: "%"
+
 variables:
     house_humidity_sensor: !input house_humidity_sensor
     bathroom_humidity_sensor: !input bathroom_humidity_sensor
@@ -204,6 +215,7 @@ variables:
     outdoor_balance_max_modifier: !input outdoor_balance_max_modifier
     outdoor_balance_min_modifier: !input outdoor_balance_min_modifier
     outdoor_difference_threshold: !input outdoor_difference_threshold
+    minimum_activation_threshold: !input minimum_activation_threshold
     mode_tracker: !input mode_tracker
     notification_device: !input notification_device
     dashboard_url: !input dashboard_url
@@ -293,6 +305,8 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
+                  value_template: "{{ house_humidity >= minimum_activation_threshold }}"
+                - condition: template
                   value_template: "{{ bathroom_humidity >= bathroom_threshold }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
@@ -361,6 +375,8 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
+                  value_template: "{{ house_humidity >= minimum_activation_threshold }}"
+                - condition: template
                   value_template: "{{ fourth_floor_humidity >= fourth_floor_threshold }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
@@ -428,6 +444,8 @@ action:
                   id: humidity_change
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ house_humidity >= minimum_activation_threshold }}"
                 - condition: template
                   value_template: "{{ outdoor_weather != '' and humidity_diff >= outdoor_difference_threshold and house_humidity >= outdoor_balance_max_threshold }}"
                 - condition: state
@@ -500,6 +518,8 @@ action:
                 - choose:
                       # Turn on dehumidification
                       - conditions:
+                            - condition: template
+                              value_template: "{{ house_humidity >= minimum_activation_threshold }}"
                             - condition: template
                               value_template: "{{ house_humidity >= house_humidity_max }}"
                             - condition: state
