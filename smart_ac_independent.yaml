@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v2.0)
+  name: Smart AC Control Independent (v2.1 - Preset Timing Fix)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -272,17 +272,19 @@ action:
   alias: "Validate both floor AC settings before applying"
 - parallel:
   - sequence:
-    - service: climate.set_preset_mode
-      target:
-        entity_id: !input second_floor_ac
-      data:
-        preset_mode: '{{ sf_target_preset }}'
     - service: climate.set_temperature
       target:
         entity_id: !input second_floor_ac
       data:
         temperature: '{{ sf_target_temp }}'
         hvac_mode: '{{ sf_target_hvac_mode }}'
+    - delay:
+        seconds: 2
+    - service: climate.set_preset_mode
+      target:
+        entity_id: !input second_floor_ac
+      data:
+        preset_mode: '{{ sf_target_preset }}'
     - if:
       - condition: template
         value_template: '{{ var_notification_device != "" and sf_mode_changed }}'
@@ -296,17 +298,19 @@ action:
           url: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
           clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
   - sequence:
-    - service: climate.set_preset_mode
-      target:
-        entity_id: !input fourth_floor_ac
-      data:
-        preset_mode: '{{ ff_target_preset }}'
     - service: climate.set_temperature
       target:
         entity_id: !input fourth_floor_ac
       data:
         temperature: '{{ ff_target_temp }}'
         hvac_mode: '{{ ff_target_hvac_mode }}'
+    - delay:
+        seconds: 2
+    - service: climate.set_preset_mode
+      target:
+        entity_id: !input fourth_floor_ac
+      data:
+        preset_mode: '{{ ff_target_preset }}'
     - if:
       - condition: template
         value_template: '{{ var_notification_device != "" and ff_mode_changed }}'
