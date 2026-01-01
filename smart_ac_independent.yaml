@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v2.6 - Collapsible Sections)
+  name: Smart AC Control Independent (v2.7 - Section Visibility Fix)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -140,7 +140,6 @@ blueprint:
     first_floor:
       name: 1st Floor
       icon: mdi:home-floor-1
-      collapsed: true
       input:
         first_floor_heating:
           name: First Floor Heating Entity
