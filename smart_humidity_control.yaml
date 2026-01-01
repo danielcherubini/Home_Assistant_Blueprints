@@ -1,5 +1,5 @@
 blueprint:
-    name: Smart Humidity Control (v1.7)
+    name: Smart Humidity Control (v1.8)
     description: >
         Automatically control humidity in your home based on house mean humidity.
         Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
@@ -340,7 +340,7 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
-                  value_template: "{{ bathroom_humidity <= (house_humidity + bathroom_minimum_offset) }}"
+                  value_template: "{{ bathroom_humidity < house_humidity_min or bathroom_humidity <= ([house_humidity + bathroom_minimum_offset, house_humidity_min] | max) }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
                   state: "on"
@@ -410,7 +410,7 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
-                  value_template: "{{ fourth_floor_humidity <= (house_humidity + fourth_floor_minimum_offset) }}"
+                  value_template: "{{ fourth_floor_humidity < house_humidity_min or fourth_floor_humidity <= ([house_humidity + fourth_floor_minimum_offset, house_humidity_min] | max) }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
                   state: "on"
