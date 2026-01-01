@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v2.2 - Floor Heating Control)
+  name: Smart AC Control Independent (v2.3 - Floor Heating Fix)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -262,6 +262,8 @@ action:
     var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
     var_bathroom_floor_heating_offset: !input bathroom_floor_heating_offset
     var_first_floor_heating_offset: !input first_floor_heating_offset
+    bathroom_floor_heating_entity: !input bathroom_floor_heating
+    first_floor_heating_entity: !input first_floor_heating
     # HVAC modes
     var_comfort_mode: !input comfort_mode
     var_heat_mode: !input heat_mode
@@ -363,6 +365,9 @@ action:
           clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
 - parallel:
   - sequence:
+    - condition: template
+      value_template: '{{ bathroom_floor_heating_entity != "" and bathroom_floor_heating_entity not in ["none", "unknown", "unavailable"] }}'
+      alias: "Check if bathroom floor heating is configured"
     - service: climate.set_temperature
       target:
         entity_id: !input bathroom_floor_heating
@@ -370,6 +375,9 @@ action:
         temperature: '{{ states(var_comfort_temperature_id)|float(0) + var_bathroom_floor_heating_offset }}'
       alias: "Set Bathroom Floor Heating Temperature"
   - sequence:
+    - condition: template
+      value_template: '{{ first_floor_heating_entity != "" and first_floor_heating_entity not in ["none", "unknown", "unavailable"] }}'
+      alias: "Check if first floor heating is configured"
     - service: climate.set_temperature
       target:
         entity_id: !input first_floor_heating
