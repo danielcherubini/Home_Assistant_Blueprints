@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v2.7 - Section Visibility Fix)
+  name: Smart AC Control Independent (v2.8 - 2nd Floor Offset)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -192,6 +192,17 @@ blueprint:
               - input_text
               multiple: false
           default: input_text.second_floor_ac_hvac_mode
+        second_floor_temperature_difference:
+          name: 2nd Floor Temperature Difference (°C)
+          description: Temperature difference for the 2nd floor target relative to comfort
+            temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: 0.0
         bathroom_floor_heating:
           name: Bathroom Floor Heating Entity
           description: The climate entity for the bathroom floor heating.
@@ -292,6 +303,7 @@ action:
     # Hysteresis settings
     var_heating_hysteresis: !input heating_hysteresis
     var_cooling_hysteresis: !input cooling_hysteresis
+    var_second_floor_temp_diff: !input second_floor_temperature_difference
     var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
     var_bathroom_floor_heating_offset: !input bathroom_floor_heating_offset
     var_first_floor_heating_offset: !input first_floor_heating_offset
@@ -309,7 +321,7 @@ action:
   target:
     entity_id: !input second_floor_current_hvac_mode_helper
   data:
-    value: "{% set current_mode = states(var_sf_hvac_mode_helper_id) %}\n{% set current_temp = states(var_second_floor_temp_sensor_id)|float(0) %}\n{% set target = states(var_comfort_temperature_id)|float(0) %}\n{% if current_mode == var_heat_mode %}\n  {% if current_temp >= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_heat_mode }}\n  {% endif %}\n{% elif current_mode == var_cool_mode %}\n  {% if current_temp <= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_cool_mode }}\n  {% endif %}\n{% else %}\n  {% if current_temp < (target - var_heating_hysteresis) %}\n    {{ var_heat_mode }}\n  {% elif current_temp > (target + var_cooling_hysteresis) %}\n    {{ var_cool_mode }}\n  {% else %}\n    {{ var_comfort_mode }}\n  {% endif %}\n{% endif %}\n"
+    value: "{% set current_mode = states(var_sf_hvac_mode_helper_id) %}\n{% set current_temp = states(var_second_floor_temp_sensor_id)|float(0) %}\n{% set base_target = states(var_comfort_temperature_id)|float(0) %}\n{% set target = base_target + var_second_floor_temp_diff|float(0) %}\n{% if current_mode == var_heat_mode %}\n  {% if current_temp >= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_heat_mode }}\n  {% endif %}\n{% elif current_mode == var_cool_mode %}\n  {% if current_temp <= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_cool_mode }}\n  {% endif %}\n{% else %}\n  {% if current_temp < (target - var_heating_hysteresis) %}\n    {{ var_heat_mode }}\n  {% elif current_temp > (target + var_cooling_hysteresis) %}\n    {{ var_cool_mode }}\n  {% else %}\n    {{ var_comfort_mode }}\n  {% endif %}\n{% endif %}\n"
   alias: Determine 2nd Floor HVAC Mode
 - service: input_text.set_value
   target:
@@ -328,7 +340,7 @@ action:
     ff_previous_mode: '{{ states(var_ff_hvac_mode_helper_id) }}'
     sf_target_hvac_mode: '{% set mode = states(var_sf_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
     sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif sf_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
-    sf_target_temp: '{{ states(var_comfort_temperature_id)|float(0) }}'
+    sf_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_second_floor_temp_diff) }}'
     ff_target_hvac_mode: '{% set mode = states(var_ff_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
     ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif ff_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
     ff_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_fourth_floor_temp_diff) }}'
