@@ -1,6 +1,6 @@
 blueprint:
-  name: Smart AC Control Independent (v2.1 - Preset Timing Fix)
-  description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides.
+  name: Smart AC Control Independent (v2.2 - Floor Heating Control)
+  description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
@@ -9,20 +9,20 @@ blueprint:
       description: Temperature difference before heating is activated.
       selector:
         number:
-          min: 0.1
-          max: 5.0
-          step: 0.1
-          mode: box
+          min: -10.0
+          max: 10.0
+          step: 0.5
+          mode: slider
       default: 0.8
     cooling_hysteresis:
       name: Cooling Hysteresis (°C)
       description: Temperature difference before cooling is activated.
       selector:
         number:
-          min: 0.1
-          max: 5.0
-          step: 0.1
-          mode: box
+          min: -10.0
+          max: 10.0
+          step: 0.5
+          mode: slider
       default: 1.0
     fourth_floor_temperature_difference:
       name: 4th Floor Temperature Difference (°C)
@@ -30,11 +30,47 @@ blueprint:
         temp.
       selector:
         number:
-          min: -5.0
-          max: 5.0
-          step: 0.1
-          mode: box
+          min: -10.0
+          max: 10.0
+          step: 0.5
+          mode: slider
       default: -1.5
+    bathroom_floor_heating:
+      name: Bathroom Floor Heating Entity
+      description: The climate entity for the bathroom floor heating.
+      selector:
+        entity:
+          domain:
+          - climate
+          multiple: false
+    bathroom_floor_heating_offset:
+      name: Bathroom Floor Heating Offset (°C)
+      description: Temperature offset for bathroom floor heating relative to comfort temp.
+      selector:
+        number:
+          min: -10.0
+          max: 10.0
+          step: 0.5
+          mode: slider
+      default: -1.0
+    first_floor_heating:
+      name: First Floor Heating Entity
+      description: The climate entity for the first floor heating.
+      selector:
+        entity:
+          domain:
+          - climate
+          multiple: false
+    first_floor_heating_offset:
+      name: First Floor Heating Offset (°C)
+      description: Temperature offset for first floor heating relative to comfort temp.
+      selector:
+        number:
+          min: -10.0
+          max: 10.0
+          step: 0.5
+          mode: slider
+      default: -7.0
     second_floor_ac:
       name: 2nd Floor AC Entity
       description: The climate entity for the 2nd floor.
@@ -224,6 +260,8 @@ action:
     var_heating_hysteresis: !input heating_hysteresis
     var_cooling_hysteresis: !input cooling_hysteresis
     var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
+    var_bathroom_floor_heating_offset: !input bathroom_floor_heating_offset
+    var_first_floor_heating_offset: !input first_floor_heating_offset
     # HVAC modes
     var_comfort_mode: !input comfort_mode
     var_heat_mode: !input heat_mode
@@ -323,3 +361,18 @@ action:
         data:
           url: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
           clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
+- parallel:
+  - sequence:
+    - service: climate.set_temperature
+      target:
+        entity_id: !input bathroom_floor_heating
+      data:
+        temperature: '{{ states(var_comfort_temperature_id)|float(0) + var_bathroom_floor_heating_offset }}'
+      alias: "Set Bathroom Floor Heating Temperature"
+  - sequence:
+    - service: climate.set_temperature
+      target:
+        entity_id: !input first_floor_heating
+      data:
+        temperature: '{{ states(var_comfort_temperature_id)|float(0) + var_first_floor_heating_offset }}'
+      alias: "Set First Floor Heating Temperature"
