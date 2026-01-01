@@ -1,9 +1,19 @@
 blueprint:
-  name: Smart AC Control Independent (v2.4 - Floor Heating Rounding)
+  name: Smart AC Control Independent (v2.5 - Organized Inputs)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
+    # Core Settings
+    comfort_temperature:
+      name: Comfort Temperature Entity
+      description: The input_number entity that controls the target comfort temperature.
+      selector:
+        entity:
+          domain:
+          - input_number
+          multiple: false
+      default: input_number.comfort_temp
     heating_hysteresis:
       name: Heating Hysteresis (°C)
       description: Temperature difference before heating is activated.
@@ -24,6 +34,54 @@ blueprint:
           step: 0.5
           mode: slider
       default: 1.0
+    # 2nd Floor AC Configuration
+    second_floor_ac:
+      name: 2nd Floor AC Entity
+      description: The climate entity for the 2nd floor.
+      selector:
+        entity:
+          domain:
+          - climate
+          multiple: false
+    second_floor_temp_sensor:
+      name: 2nd Floor Temperature Sensor
+      description: The temperature sensor for the 2nd floor.
+      selector:
+        entity:
+          domain:
+          - sensor
+          device_class:
+          - temperature
+          multiple: false
+    second_floor_current_hvac_mode_helper:
+      name: 2nd Floor AC Current HVAC Mode Helper
+      description: Helper entity (input_text) to store the current HVAC mode of the
+        2nd floor AC unit.
+      selector:
+        entity:
+          domain:
+          - input_text
+          multiple: false
+      default: input_text.second_floor_ac_hvac_mode
+    # 4th Floor AC Configuration
+    fourth_floor_ac:
+      name: 4th Floor AC Entity
+      description: The climate entity for the 4th floor.
+      selector:
+        entity:
+          domain:
+          - climate
+          multiple: false
+    fourth_floor_temp_sensor:
+      name: 4th Floor Temperature Sensor
+      description: The temperature sensor for the 4th floor.
+      selector:
+        entity:
+          domain:
+          - sensor
+          device_class:
+          - temperature
+          multiple: false
     fourth_floor_temperature_difference:
       name: 4th Floor Temperature Difference (°C)
       description: Temperature difference for the 4th floor target relative to comfort
@@ -35,6 +93,17 @@ blueprint:
           step: 0.5
           mode: slider
       default: -1.5
+    fourth_floor_current_hvac_mode_helper:
+      name: 4th Floor AC Current HVAC Mode Helper
+      description: Helper entity (input_text) to store the current HVAC mode of the
+        4th floor AC unit.
+      selector:
+        entity:
+          domain:
+          - input_text
+          multiple: false
+      default: input_text.fourth_floor_ac_hvac_mode
+    # Floor Heating Configuration
     bathroom_floor_heating:
       name: Bathroom Floor Heating Entity
       description: The climate entity for the bathroom floor heating.
@@ -71,84 +140,7 @@ blueprint:
           step: 0.5
           mode: slider
       default: -7.0
-    second_floor_ac:
-      name: 2nd Floor AC Entity
-      description: The climate entity for the 2nd floor.
-      selector:
-        entity:
-          domain:
-          - climate
-          multiple: false
-    second_floor_temp_sensor:
-      name: 2nd Floor Temperature Sensor
-      description: The temperature sensor for the 2nd floor.
-      selector:
-        entity:
-          domain:
-          - sensor
-          device_class:
-          - temperature
-          multiple: false
-    fourth_floor_ac:
-      name: 4th Floor AC Entity
-      description: The climate entity for the 4th floor.
-      selector:
-        entity:
-          domain:
-          - climate
-          multiple: false
-    fourth_floor_temp_sensor:
-      name: 4th Floor Temperature Sensor
-      description: The temperature sensor for the 4th floor.
-      selector:
-        entity:
-          domain:
-          - sensor
-          device_class:
-          - temperature
-          multiple: false
-    comfort_preset:
-      name: Comfort Preset
-      description: The preset to use when in the comfort zone.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Normal
-    heat_preset:
-      name: Heat Preset
-      description: The preset to use when in the heating zone.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Powerful
-    cool_preset:
-      name: Cool Preset
-      description: The preset to use when in the cooling zone.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Powerful
+    # HVAC Modes
     comfort_mode:
       name: Comfort Mode (HVAC)
       description: The HVAC mode to use when in the comfort zone.
@@ -197,35 +189,50 @@ blueprint:
           custom_value: false
           multiple: false
       default: cool
-    second_floor_current_hvac_mode_helper:
-      name: 2nd Floor AC Current HVAC Mode Helper
-      description: Helper entity (input_text) to store the current HVAC mode of the
-        2nd floor AC unit.
+    # AC Presets
+    comfort_preset:
+      name: Comfort Preset
+      description: The preset to use when in the comfort zone.
       selector:
-        entity:
-          domain:
-          - input_text
+        select:
+          options:
+          - Normal
+          - Powerful
+          - Quiet
+          - 'off'
+          sort: false
+          custom_value: false
           multiple: false
-      default: input_text.second_floor_ac_hvac_mode
-    fourth_floor_current_hvac_mode_helper:
-      name: 4th Floor AC Current HVAC Mode Helper
-      description: Helper entity (input_text) to store the current HVAC mode of the
-        4th floor AC unit.
+      default: Normal
+    heat_preset:
+      name: Heat Preset
+      description: The preset to use when in the heating zone.
       selector:
-        entity:
-          domain:
-          - input_text
+        select:
+          options:
+          - Normal
+          - Powerful
+          - Quiet
+          - 'off'
+          sort: false
+          custom_value: false
           multiple: false
-      default: input_text.fourth_floor_ac_hvac_mode
-    comfort_temperature:
-      name: Comfort Temperature Entity
-      description: The input_number entity that controls the target comfort temperature.
+      default: Powerful
+    cool_preset:
+      name: Cool Preset
+      description: The preset to use when in the cooling zone.
       selector:
-        entity:
-          domain:
-          - input_number
+        select:
+          options:
+          - Normal
+          - Powerful
+          - Quiet
+          - 'off'
+          sort: false
+          custom_value: false
           multiple: false
-      default: input_number.comfort_temp
+      default: Powerful
+    # Notifications (Optional)
     notification_device:
       name: Notification Device (Optional)
       description: Mobile device to receive notifications when HVAC mode changes
