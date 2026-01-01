@@ -1,251 +1,278 @@
 blueprint:
-  name: Smart AC Control Independent (v2.5 - Organized Inputs)
+  name: Smart AC Control Independent (v2.6 - Collapsible Sections)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
-    # Core Settings
-    comfort_temperature:
-      name: Comfort Temperature Entity
-      description: The input_number entity that controls the target comfort temperature.
-      selector:
-        entity:
-          domain:
-          - input_number
-          multiple: false
-      default: input_number.comfort_temp
-    heating_hysteresis:
-      name: Heating Hysteresis (°C)
-      description: Temperature difference before heating is activated.
-      selector:
-        number:
-          min: -10.0
-          max: 10.0
-          step: 0.5
-          mode: slider
-      default: 0.8
-    cooling_hysteresis:
-      name: Cooling Hysteresis (°C)
-      description: Temperature difference before cooling is activated.
-      selector:
-        number:
-          min: -10.0
-          max: 10.0
-          step: 0.5
-          mode: slider
-      default: 1.0
-    # 2nd Floor AC Configuration
-    second_floor_ac:
-      name: 2nd Floor AC Entity
-      description: The climate entity for the 2nd floor.
-      selector:
-        entity:
-          domain:
-          - climate
-          multiple: false
-    second_floor_temp_sensor:
-      name: 2nd Floor Temperature Sensor
-      description: The temperature sensor for the 2nd floor.
-      selector:
-        entity:
-          domain:
-          - sensor
-          device_class:
-          - temperature
-          multiple: false
-    second_floor_current_hvac_mode_helper:
-      name: 2nd Floor AC Current HVAC Mode Helper
-      description: Helper entity (input_text) to store the current HVAC mode of the
-        2nd floor AC unit.
-      selector:
-        entity:
-          domain:
-          - input_text
-          multiple: false
-      default: input_text.second_floor_ac_hvac_mode
-    # 4th Floor AC Configuration
-    fourth_floor_ac:
-      name: 4th Floor AC Entity
-      description: The climate entity for the 4th floor.
-      selector:
-        entity:
-          domain:
-          - climate
-          multiple: false
-    fourth_floor_temp_sensor:
-      name: 4th Floor Temperature Sensor
-      description: The temperature sensor for the 4th floor.
-      selector:
-        entity:
-          domain:
-          - sensor
-          device_class:
-          - temperature
-          multiple: false
-    fourth_floor_temperature_difference:
-      name: 4th Floor Temperature Difference (°C)
-      description: Temperature difference for the 4th floor target relative to comfort
-        temp.
-      selector:
-        number:
-          min: -10.0
-          max: 10.0
-          step: 0.5
-          mode: slider
-      default: -1.5
-    fourth_floor_current_hvac_mode_helper:
-      name: 4th Floor AC Current HVAC Mode Helper
-      description: Helper entity (input_text) to store the current HVAC mode of the
-        4th floor AC unit.
-      selector:
-        entity:
-          domain:
-          - input_text
-          multiple: false
-      default: input_text.fourth_floor_ac_hvac_mode
-    # Floor Heating Configuration
-    bathroom_floor_heating:
-      name: Bathroom Floor Heating Entity
-      description: The climate entity for the bathroom floor heating.
-      selector:
-        entity:
-          domain:
-          - climate
-          multiple: false
-    bathroom_floor_heating_offset:
-      name: Bathroom Floor Heating Offset (°C)
-      description: Temperature offset for bathroom floor heating relative to comfort temp.
-      selector:
-        number:
-          min: -10.0
-          max: 10.0
-          step: 0.5
-          mode: slider
-      default: -1.0
-    first_floor_heating:
-      name: First Floor Heating Entity
-      description: The climate entity for the first floor heating.
-      selector:
-        entity:
-          domain:
-          - climate
-          multiple: false
-    first_floor_heating_offset:
-      name: First Floor Heating Offset (°C)
-      description: Temperature offset for first floor heating relative to comfort temp.
-      selector:
-        number:
-          min: -10.0
-          max: 10.0
-          step: 0.5
-          mode: slider
-      default: -7.0
-    # HVAC Modes
-    comfort_mode:
-      name: Comfort Mode (HVAC)
-      description: The HVAC mode to use when in the comfort zone.
-      selector:
-        select:
-          options:
-          - auto
-          - heat_cool
-          - cool
-          - heat
-          - fan_only
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: fan_only
-    heat_mode:
-      name: Heat Mode (HVAC)
-      description: The HVAC mode to use when in the heating zone.
-      selector:
-        select:
-          options:
-          - auto
-          - heat_cool
-          - cool
-          - heat
-          - fan_only
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: heat
-    cool_mode:
-      name: Cool Mode (HVAC)
-      description: The HVAC mode to use when in the cooling zone.
-      selector:
-        select:
-          options:
-          - auto
-          - heat_cool
-          - cool
-          - heat
-          - fan_only
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: cool
-    # AC Presets
-    comfort_preset:
-      name: Comfort Preset
-      description: The preset to use when in the comfort zone.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Normal
-    heat_preset:
-      name: Heat Preset
-      description: The preset to use when in the heating zone.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Powerful
-    cool_preset:
-      name: Cool Preset
-      description: The preset to use when in the cooling zone.
-      selector:
-        select:
-          options:
-          - Normal
-          - Powerful
-          - Quiet
-          - 'off'
-          sort: false
-          custom_value: false
-          multiple: false
-      default: Powerful
-    # Notifications (Optional)
-    notification_device:
-      name: Notification Device (Optional)
-      description: Mobile device to receive notifications when HVAC mode changes
-      selector:
-        device:
-          filter:
-          - integration: mobile_app
-    dashboard_url:
-      name: Dashboard URL (Optional)
-      description: URL path to navigate to when notification is clicked (e.g., /lovelace/climate)
-      default: ""
-      selector:
-        text:
+    core_settings:
+      name: Core Settings
+      icon: mdi:cog
+      input:
+        comfort_temperature:
+          name: Comfort Temperature Entity
+          description: The input_number entity that controls the target comfort temperature.
+          selector:
+            entity:
+              domain:
+              - input_number
+              multiple: false
+          default: input_number.comfort_temp
+        heating_hysteresis:
+          name: Heating Hysteresis (°C)
+          description: Temperature difference before heating is activated.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: 0.8
+        cooling_hysteresis:
+          name: Cooling Hysteresis (°C)
+          description: Temperature difference before cooling is activated.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: 1.0
+    hvac_modes:
+      name: HVAC Modes
+      icon: mdi:air-conditioner
+      collapsed: true
+      input:
+        comfort_mode:
+          name: Comfort Mode (HVAC)
+          description: The HVAC mode to use when in the comfort zone.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: fan_only
+        heat_mode:
+          name: Heat Mode (HVAC)
+          description: The HVAC mode to use when in the heating zone.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: heat
+        cool_mode:
+          name: Cool Mode (HVAC)
+          description: The HVAC mode to use when in the cooling zone.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: cool
+    ac_presets:
+      name: AC Presets
+      icon: mdi:tune
+      collapsed: true
+      input:
+        comfort_preset:
+          name: Comfort Preset
+          description: The preset to use when in the comfort zone.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Normal
+        heat_preset:
+          name: Heat Preset
+          description: The preset to use when in the heating zone.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Powerful
+        cool_preset:
+          name: Cool Preset
+          description: The preset to use when in the cooling zone.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Powerful
+    first_floor:
+      name: 1st Floor
+      icon: mdi:home-floor-1
+      collapsed: true
+      input:
+        first_floor_heating:
+          name: First Floor Heating Entity
+          description: The climate entity for the first floor heating.
+          selector:
+            entity:
+              domain:
+              - climate
+              multiple: false
+          default: ""
+        first_floor_heating_offset:
+          name: First Floor Heating Offset (°C)
+          description: Temperature offset for first floor heating relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: -7.0
+    second_floor:
+      name: 2nd Floor
+      icon: mdi:home-floor-2
+      input:
+        second_floor_ac:
+          name: 2nd Floor AC Entity
+          description: The climate entity for the 2nd floor.
+          selector:
+            entity:
+              domain:
+              - climate
+              multiple: false
+        second_floor_temp_sensor:
+          name: 2nd Floor Temperature Sensor
+          description: The temperature sensor for the 2nd floor.
+          selector:
+            entity:
+              domain:
+              - sensor
+              device_class:
+              - temperature
+              multiple: false
+        second_floor_current_hvac_mode_helper:
+          name: 2nd Floor AC Current HVAC Mode Helper
+          description: Helper entity (input_text) to store the current HVAC mode of the
+            2nd floor AC unit.
+          selector:
+            entity:
+              domain:
+              - input_text
+              multiple: false
+          default: input_text.second_floor_ac_hvac_mode
+        bathroom_floor_heating:
+          name: Bathroom Floor Heating Entity
+          description: The climate entity for the bathroom floor heating.
+          selector:
+            entity:
+              domain:
+              - climate
+              multiple: false
+          default: ""
+        bathroom_floor_heating_offset:
+          name: Bathroom Floor Heating Offset (°C)
+          description: Temperature offset for bathroom floor heating relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: -1.0
+    fourth_floor:
+      name: 4th Floor
+      icon: mdi:home-floor-3
+      input:
+        fourth_floor_ac:
+          name: 4th Floor AC Entity
+          description: The climate entity for the 4th floor.
+          selector:
+            entity:
+              domain:
+              - climate
+              multiple: false
+        fourth_floor_temp_sensor:
+          name: 4th Floor Temperature Sensor
+          description: The temperature sensor for the 4th floor.
+          selector:
+            entity:
+              domain:
+              - sensor
+              device_class:
+              - temperature
+              multiple: false
+        fourth_floor_temperature_difference:
+          name: 4th Floor Temperature Difference (°C)
+          description: Temperature difference for the 4th floor target relative to comfort
+            temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: -1.5
+        fourth_floor_current_hvac_mode_helper:
+          name: 4th Floor AC Current HVAC Mode Helper
+          description: Helper entity (input_text) to store the current HVAC mode of the
+            4th floor AC unit.
+          selector:
+            entity:
+              domain:
+              - input_text
+              multiple: false
+          default: input_text.fourth_floor_ac_hvac_mode
+    optional_settings:
+      name: Optional Settings
+      icon: mdi:bell-outline
+      collapsed: true
+      input:
+        notification_device:
+          name: Notification Device (Optional)
+          description: Mobile device to receive notifications when HVAC mode changes
+          selector:
+            device:
+              filter:
+              - integration: mobile_app
+        dashboard_url:
+          name: Dashboard URL (Optional)
+          description: URL path to navigate to when notification is clicked (e.g., /lovelace/climate)
+          default: ""
+          selector:
+            text:
 trigger:
 - platform: state
   entity_id:
