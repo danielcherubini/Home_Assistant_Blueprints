@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v2.3 - Floor Heating Fix)
+  name: Smart AC Control Independent (v2.4 - Floor Heating Rounding)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -372,7 +372,7 @@ action:
       target:
         entity_id: !input bathroom_floor_heating
       data:
-        temperature: '{{ states(var_comfort_temperature_id)|float(0) + var_bathroom_floor_heating_offset }}'
+        temperature: '{{ (states(var_comfort_temperature_id)|float(0) + var_bathroom_floor_heating_offset)|int }}'
       alias: "Set Bathroom Floor Heating Temperature"
   - sequence:
     - condition: template
@@ -382,5 +382,5 @@ action:
       target:
         entity_id: !input first_floor_heating
       data:
-        temperature: '{{ states(var_comfort_temperature_id)|float(0) + var_first_floor_heating_offset }}'
+        temperature: '{{ (states(var_comfort_temperature_id)|float(0) + var_first_floor_heating_offset)|int }}'
       alias: "Set First Floor Heating Temperature"
