@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v2.9 - 3rd Floor Dining Room)
+  name: Smart AC Control Independent (v3.0 - Dining Room Half Degrees)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -462,5 +462,5 @@ action:
       target:
         entity_id: !input dining_room_heating
       data:
-        temperature: '{{ (states(var_comfort_temperature_id)|float(0) + var_dining_room_heating_offset)|int }}'
+        temperature: '{{ (states(var_comfort_temperature_id)|float(0) + var_dining_room_heating_offset) }}'
       alias: "Set Dining Room Heating Temperature"
