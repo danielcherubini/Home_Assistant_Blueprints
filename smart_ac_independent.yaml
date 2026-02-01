@@ -1,6 +1,9 @@
 blueprint:
-  name: Smart AC Control Independent (v4.0 - Defrost Protection)
-  description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
+  name: Smart AC Control Independent (v5.1 - Per-Unit Defrost)
+  description: >
+    Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
+    Includes passive defrost protection (prevents fan_only switching when cold) and optional active defrost
+    intervention (forces cooling cycle when coil gets too cold for too long). Defrost settings are per-unit.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
@@ -37,23 +40,63 @@ blueprint:
               step: 0.5
               mode: slider
           default: 1.0
-        defrost_protection_enabled:
-          name: Enable Defrost Protection
-          description: Prevents heat-to-fan switching when outdoor temp is below threshold, allowing the heat pump's internal defrost cycle to run.
-          selector:
-            boolean:
-          default: true
         defrost_threshold_temp:
-          name: Defrost Protection Threshold (°C)
-          description: When outdoor temp falls below this, defrost protection activates. Recommended 2°C.
+          name: Passive Defrost Protection Threshold (°C)
+          description: >
+            When coil temp falls below this, passive defrost protection activates (prevents heat→fan_only switching).
+            For Nordic/cold-climate units like Panasonic HZ, use -5°C to -10°C since these units have robust built-in defrost.
           selector:
             number:
-              min: -10.0
+              min: -15.0
               max: 10.0
               step: 0.5
               mode: slider
               unit_of_measurement: "°C"
-          default: 2.0
+          default: -5.0
+        active_defrost_coil_threshold:
+          name: Active Defrost Coil Threshold (°C)
+          description: Force defrost when coil temp drops below this for the specified duration. Recommended -15°C.
+          selector:
+            number:
+              min: -25.0
+              max: 0.0
+              step: 1.0
+              mode: slider
+              unit_of_measurement: "°C"
+          default: -15.0
+        active_defrost_trigger_minutes:
+          name: Active Defrost Trigger Duration (minutes)
+          description: How long the coil must stay below threshold before forcing a defrost cycle.
+          selector:
+            number:
+              min: 5
+              max: 60
+              step: 5
+              mode: slider
+              unit_of_measurement: "min"
+          default: 30
+        active_defrost_cycle_minutes:
+          name: Active Defrost Cycle Duration (minutes)
+          description: How long to run in cooling mode to defrost the coil.
+          selector:
+            number:
+              min: 5
+              max: 20
+              step: 1
+              mode: slider
+              unit_of_measurement: "min"
+          default: 10
+        active_defrost_cool_temp:
+          name: Active Defrost Cooling Temperature (°C)
+          description: Target temperature when running the defrost cooling cycle.
+          selector:
+            number:
+              min: 10.0
+              max: 20.0
+              step: 1.0
+              mode: slider
+              unit_of_measurement: "°C"
+          default: 16.0
     hvac_modes:
       name: HVAC Modes
       icon: mdi:air-conditioner
@@ -250,6 +293,22 @@ blueprint:
               device_class:
               - temperature
               multiple: false
+        second_floor_defrost_protection:
+          name: 2nd Floor Passive Defrost Protection
+          description: >
+            Prevents heat→fan_only switching when coil temp is below threshold.
+            Enable this for units that work hard (2nd floor heats upper floors via stack effect).
+          selector:
+            boolean:
+          default: true
+        second_floor_active_defrost:
+          name: 2nd Floor Active Defrost Intervention
+          description: >
+            Forces a cooling cycle when coil stays too cold for too long.
+            Enable this if built-in defrost isn't keeping up with severe icing conditions.
+          selector:
+            boolean:
+          default: false
     third_floor:
       name: 3rd Floor
       icon: mdi:home-floor-2
@@ -327,6 +386,22 @@ blueprint:
               device_class:
               - temperature
               multiple: false
+        fourth_floor_defrost_protection:
+          name: 4th Floor Passive Defrost Protection
+          description: >
+            Prevents heat→fan_only switching when coil temp is below threshold.
+            Consider disabling for units that don't work hard (4th floor gets free heat from below).
+          selector:
+            boolean:
+          default: false
+        fourth_floor_active_defrost:
+          name: 4th Floor Active Defrost Intervention
+          description: >
+            Forces a cooling cycle when coil stays too cold for too long.
+            Usually not needed for 4th floor as it rarely runs hard enough to ice up.
+          selector:
+            boolean:
+          default: false
     optional_settings:
       name: Optional Settings
       icon: mdi:bell-outline
@@ -357,9 +432,135 @@ trigger:
 - platform: state
   entity_id: !input fourth_floor_outdoor_temp_sensor
   id: ff_outdoor_temp_change
+- platform: numeric_state
+  entity_id: !input second_floor_outdoor_temp_sensor
+  below: !input active_defrost_coil_threshold
+  for:
+    minutes: !input active_defrost_trigger_minutes
+  id: sf_active_defrost_trigger
+- platform: numeric_state
+  entity_id: !input fourth_floor_outdoor_temp_sensor
+  below: !input active_defrost_coil_threshold
+  for:
+    minutes: !input active_defrost_trigger_minutes
+  id: ff_active_defrost_trigger
 condition: []
+mode: queued
+max: 5
 action:
-- variables:
+# Handle active defrost triggers first - these take priority
+- choose:
+  - conditions:
+    - condition: trigger
+      id: sf_active_defrost_trigger
+    - condition: template
+      value_template: "{{ is_state_attr('automation.this', 'current', 0) or true }}"
+    sequence:
+    - variables:
+        var_sf_active_defrost_enabled: !input second_floor_active_defrost
+        var_active_defrost_cycle_minutes: !input active_defrost_cycle_minutes
+        var_active_defrost_cool_temp: !input active_defrost_cool_temp
+        var_sf_outdoor_sensor_id: !input second_floor_outdoor_temp_sensor
+        second_floor_ac_entity: !input second_floor_ac
+        var_notification_device: !input notification_device
+        var_dashboard_url: !input dashboard_url
+    - condition: template
+      value_template: "{{ var_sf_active_defrost_enabled }}"
+      alias: "Check if 2nd floor active defrost is enabled"
+    - if:
+      - condition: template
+        value_template: "{{ var_notification_device != '' }}"
+      then:
+      - device_id: !input notification_device
+        domain: mobile_app
+        type: notify
+        title: "🧊 Active Defrost - 2nd Floor"
+        message: "Coil temp {{ states(var_sf_outdoor_sensor_id) }}°C - forcing {{ var_active_defrost_cycle_minutes }} min cooling cycle"
+        data:
+          url: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+          clickAction: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+    - service: climate.set_temperature
+      target:
+        entity_id: !input second_floor_ac
+      data:
+        temperature: "{{ var_active_defrost_cool_temp }}"
+        hvac_mode: cool
+    - delay:
+        minutes: "{{ var_active_defrost_cycle_minutes }}"
+    - service: climate.set_hvac_mode
+      target:
+        entity_id: !input second_floor_ac
+      data:
+        hvac_mode: heat
+    - if:
+      - condition: template
+        value_template: "{{ var_notification_device != '' }}"
+      then:
+      - device_id: !input notification_device
+        domain: mobile_app
+        type: notify
+        title: "✅ Defrost Complete - 2nd Floor"
+        message: "Defrost cycle complete, resuming heat mode"
+        data:
+          url: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+          clickAction: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+    alias: "2nd Floor Active Defrost Cycle"
+  - conditions:
+    - condition: trigger
+      id: ff_active_defrost_trigger
+    sequence:
+    - variables:
+        var_ff_active_defrost_enabled: !input fourth_floor_active_defrost
+        var_active_defrost_cycle_minutes: !input active_defrost_cycle_minutes
+        var_active_defrost_cool_temp: !input active_defrost_cool_temp
+        var_ff_outdoor_sensor_id: !input fourth_floor_outdoor_temp_sensor
+        fourth_floor_ac_entity: !input fourth_floor_ac
+        var_notification_device: !input notification_device
+        var_dashboard_url: !input dashboard_url
+    - condition: template
+      value_template: "{{ var_ff_active_defrost_enabled }}"
+      alias: "Check if 4th floor active defrost is enabled"
+    - if:
+      - condition: template
+        value_template: "{{ var_notification_device != '' }}"
+      then:
+      - device_id: !input notification_device
+        domain: mobile_app
+        type: notify
+        title: "🧊 Active Defrost - 4th Floor"
+        message: "Coil temp {{ states(var_ff_outdoor_sensor_id) }}°C - forcing {{ var_active_defrost_cycle_minutes }} min cooling cycle"
+        data:
+          url: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+          clickAction: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+    - service: climate.set_temperature
+      target:
+        entity_id: !input fourth_floor_ac
+      data:
+        temperature: "{{ var_active_defrost_cool_temp }}"
+        hvac_mode: cool
+    - delay:
+        minutes: "{{ var_active_defrost_cycle_minutes }}"
+    - service: climate.set_hvac_mode
+      target:
+        entity_id: !input fourth_floor_ac
+      data:
+        hvac_mode: heat
+    - if:
+      - condition: template
+        value_template: "{{ var_notification_device != '' }}"
+      then:
+      - device_id: !input notification_device
+        domain: mobile_app
+        type: notify
+        title: "✅ Defrost Complete - 4th Floor"
+        message: "Defrost cycle complete, resuming heat mode"
+        data:
+          url: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+          clickAction: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
+    alias: "4th Floor Active Defrost Cycle"
+  default:
+  # Continue with normal temperature-based logic
+  - variables:
     # Input references
     var_comfort_temperature_id: !input comfort_temperature
     var_second_floor_temp_sensor_id: !input second_floor_temp_sensor
@@ -387,11 +588,18 @@ action:
     var_comfort_preset: !input comfort_preset
     var_heat_preset: !input heat_preset
     var_cool_preset: !input cool_preset
-    # Defrost protection
-    var_defrost_enabled: !input defrost_protection_enabled
+    # Passive defrost protection (prevents fan_only switching) - per unit
+    var_sf_defrost_enabled: !input second_floor_defrost_protection
+    var_ff_defrost_enabled: !input fourth_floor_defrost_protection
     var_defrost_threshold: !input defrost_threshold_temp
     var_sf_outdoor_sensor_id: !input second_floor_outdoor_temp_sensor
     var_ff_outdoor_sensor_id: !input fourth_floor_outdoor_temp_sensor
+    # Active defrost intervention (forces cooling cycle) - per unit
+    var_sf_active_defrost_enabled: !input second_floor_active_defrost
+    var_ff_active_defrost_enabled: !input fourth_floor_active_defrost
+    var_active_defrost_coil_threshold: !input active_defrost_coil_threshold
+    var_active_defrost_cycle_minutes: !input active_defrost_cycle_minutes
+    var_active_defrost_cool_temp: !input active_defrost_cool_temp
     # Per-floor defrost state
     sf_outdoor_temp_available: >
       {{ var_sf_outdoor_sensor_id != '' and
@@ -399,14 +607,14 @@ action:
     sf_outdoor_temp: >
       {{ states(var_sf_outdoor_sensor_id)|float(99) if sf_outdoor_temp_available else 99 }}
     sf_defrost_protection_active: >
-      {{ var_defrost_enabled and sf_outdoor_temp_available and sf_outdoor_temp < var_defrost_threshold }}
+      {{ var_sf_defrost_enabled and sf_outdoor_temp_available and sf_outdoor_temp < var_defrost_threshold }}
     ff_outdoor_temp_available: >
       {{ var_ff_outdoor_sensor_id != '' and
          states(var_ff_outdoor_sensor_id) not in ['unknown', 'unavailable', 'none'] }}
     ff_outdoor_temp: >
       {{ states(var_ff_outdoor_sensor_id)|float(99) if ff_outdoor_temp_available else 99 }}
     ff_defrost_protection_active: >
-      {{ var_defrost_enabled and ff_outdoor_temp_available and ff_outdoor_temp < var_defrost_threshold }}
+      {{ var_ff_defrost_enabled and ff_outdoor_temp_available and ff_outdoor_temp < var_defrost_threshold }}
 - service: input_text.set_value
   target:
     entity_id: !input second_floor_current_hvac_mode_helper
