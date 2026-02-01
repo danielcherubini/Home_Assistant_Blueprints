@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v3.0 - Dining Room Half Degrees)
+  name: Smart AC Control Independent (v4.0 - Defrost Protection)
   description: Automatically adjusts AC based on individual floor temperatures. Each floor operates independently without whole-house overrides. Includes floor heating temperature control with offset sliders.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
@@ -37,6 +37,23 @@ blueprint:
               step: 0.5
               mode: slider
           default: 1.0
+        defrost_protection_enabled:
+          name: Enable Defrost Protection
+          description: Prevents heat-to-fan switching when outdoor temp is below threshold, allowing the heat pump's internal defrost cycle to run.
+          selector:
+            boolean:
+          default: true
+        defrost_threshold_temp:
+          name: Defrost Protection Threshold (°C)
+          description: When outdoor temp falls below this, defrost protection activates. Recommended 2°C.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+              unit_of_measurement: "°C"
+          default: 2.0
     hvac_modes:
       name: HVAC Modes
       icon: mdi:air-conditioner
@@ -222,6 +239,17 @@ blueprint:
               step: 0.5
               mode: slider
           default: -1.0
+        second_floor_outdoor_temp_sensor:
+          name: 2nd Floor Outdoor Temperature Sensor
+          description: External temperature sensor on the 2nd floor heat pump unit. Used for defrost protection.
+          default: ""
+          selector:
+            entity:
+              domain:
+              - sensor
+              device_class:
+              - temperature
+              multiple: false
     third_floor:
       name: 3rd Floor
       icon: mdi:home-floor-2
@@ -288,6 +316,17 @@ blueprint:
               - input_text
               multiple: false
           default: input_text.fourth_floor_ac_hvac_mode
+        fourth_floor_outdoor_temp_sensor:
+          name: 4th Floor Outdoor Temperature Sensor
+          description: External temperature sensor on the 4th floor heat pump unit. Used for defrost protection.
+          default: ""
+          selector:
+            entity:
+              domain:
+              - sensor
+              device_class:
+              - temperature
+              multiple: false
     optional_settings:
       name: Optional Settings
       icon: mdi:bell-outline
@@ -312,6 +351,12 @@ trigger:
   - !input comfort_temperature
   - !input second_floor_temp_sensor
   - !input fourth_floor_temp_sensor
+- platform: state
+  entity_id: !input second_floor_outdoor_temp_sensor
+  id: sf_outdoor_temp_change
+- platform: state
+  entity_id: !input fourth_floor_outdoor_temp_sensor
+  id: ff_outdoor_temp_change
 condition: []
 action:
 - variables:
@@ -342,17 +387,91 @@ action:
     var_comfort_preset: !input comfort_preset
     var_heat_preset: !input heat_preset
     var_cool_preset: !input cool_preset
+    # Defrost protection
+    var_defrost_enabled: !input defrost_protection_enabled
+    var_defrost_threshold: !input defrost_threshold_temp
+    var_sf_outdoor_sensor_id: !input second_floor_outdoor_temp_sensor
+    var_ff_outdoor_sensor_id: !input fourth_floor_outdoor_temp_sensor
+    # Per-floor defrost state
+    sf_outdoor_temp_available: >
+      {{ var_sf_outdoor_sensor_id != '' and
+         states(var_sf_outdoor_sensor_id) not in ['unknown', 'unavailable', 'none'] }}
+    sf_outdoor_temp: >
+      {{ states(var_sf_outdoor_sensor_id)|float(99) if sf_outdoor_temp_available else 99 }}
+    sf_defrost_protection_active: >
+      {{ var_defrost_enabled and sf_outdoor_temp_available and sf_outdoor_temp < var_defrost_threshold }}
+    ff_outdoor_temp_available: >
+      {{ var_ff_outdoor_sensor_id != '' and
+         states(var_ff_outdoor_sensor_id) not in ['unknown', 'unavailable', 'none'] }}
+    ff_outdoor_temp: >
+      {{ states(var_ff_outdoor_sensor_id)|float(99) if ff_outdoor_temp_available else 99 }}
+    ff_defrost_protection_active: >
+      {{ var_defrost_enabled and ff_outdoor_temp_available and ff_outdoor_temp < var_defrost_threshold }}
 - service: input_text.set_value
   target:
     entity_id: !input second_floor_current_hvac_mode_helper
   data:
-    value: "{% set current_mode = states(var_sf_hvac_mode_helper_id) %}\n{% set current_temp = states(var_second_floor_temp_sensor_id)|float(0) %}\n{% set base_target = states(var_comfort_temperature_id)|float(0) %}\n{% set target = base_target + var_second_floor_temp_diff|float(0) %}\n{% if current_mode == var_heat_mode %}\n  {% if current_temp >= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_heat_mode }}\n  {% endif %}\n{% elif current_mode == var_cool_mode %}\n  {% if current_temp <= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_cool_mode }}\n  {% endif %}\n{% else %}\n  {% if current_temp < (target - var_heating_hysteresis) %}\n    {{ var_heat_mode }}\n  {% elif current_temp > (target + var_cooling_hysteresis) %}\n    {{ var_cool_mode }}\n  {% else %}\n    {{ var_comfort_mode }}\n  {% endif %}\n{% endif %}\n"
+    value: >
+      {% set current_mode = states(var_sf_hvac_mode_helper_id) %}
+      {% set current_temp = states(var_second_floor_temp_sensor_id)|float(0) %}
+      {% set base_target = states(var_comfort_temperature_id)|float(0) %}
+      {% set target = base_target + var_second_floor_temp_diff|float(0) %}
+      {% if current_mode == var_heat_mode %}
+        {% if sf_defrost_protection_active %}
+          {{ var_heat_mode }}
+        {% elif current_temp >= target %}
+          {{ var_comfort_mode }}
+        {% else %}
+          {{ var_heat_mode }}
+        {% endif %}
+      {% elif current_mode == var_cool_mode %}
+        {% if current_temp <= target %}
+          {{ var_comfort_mode }}
+        {% else %}
+          {{ var_cool_mode }}
+        {% endif %}
+      {% else %}
+        {% if current_temp < (target - var_heating_hysteresis) %}
+          {{ var_heat_mode }}
+        {% elif current_temp > (target + var_cooling_hysteresis) %}
+          {{ var_cool_mode }}
+        {% else %}
+          {{ var_comfort_mode }}
+        {% endif %}
+      {% endif %}
   alias: Determine 2nd Floor HVAC Mode
 - service: input_text.set_value
   target:
     entity_id: !input fourth_floor_current_hvac_mode_helper
   data:
-    value: "{% set current_mode = states(var_ff_hvac_mode_helper_id) %}\n{% set current_temp = states(var_fourth_floor_temp_sensor_id)|float(0) %}\n{% set base_target = states(var_comfort_temperature_id)|float(0) %}\n{% set target = base_target + var_fourth_floor_temp_diff|float(0) %}\n{% if current_mode == var_heat_mode %}\n  {% if current_temp >= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_heat_mode }}\n  {% endif %}\n{% elif current_mode == var_cool_mode %}\n  {% if current_temp <= target %}\n    {{ var_comfort_mode }}\n  {% else %}\n    {{ var_cool_mode }}\n  {% endif %}\n{% else %}\n  {% if current_temp < (target - var_heating_hysteresis) %}\n    {{ var_heat_mode }}\n  {% elif current_temp > (target + var_cooling_hysteresis) %}\n    {{ var_cool_mode }}\n  {% else %}\n    {{ var_comfort_mode }}\n  {% endif %}\n{% endif %}\n"
+    value: >
+      {% set current_mode = states(var_ff_hvac_mode_helper_id) %}
+      {% set current_temp = states(var_fourth_floor_temp_sensor_id)|float(0) %}
+      {% set base_target = states(var_comfort_temperature_id)|float(0) %}
+      {% set target = base_target + var_fourth_floor_temp_diff|float(0) %}
+      {% if current_mode == var_heat_mode %}
+        {% if ff_defrost_protection_active %}
+          {{ var_heat_mode }}
+        {% elif current_temp >= target %}
+          {{ var_comfort_mode }}
+        {% else %}
+          {{ var_heat_mode }}
+        {% endif %}
+      {% elif current_mode == var_cool_mode %}
+        {% if current_temp <= target %}
+          {{ var_comfort_mode }}
+        {% else %}
+          {{ var_cool_mode }}
+        {% endif %}
+      {% else %}
+        {% if current_temp < (target - var_heating_hysteresis) %}
+          {{ var_heat_mode }}
+        {% elif current_temp > (target + var_cooling_hysteresis) %}
+          {{ var_cool_mode }}
+        {% else %}
+          {{ var_comfort_mode }}
+        {% endif %}
+      {% endif %}
   alias: Determine 4th Floor HVAC Mode
 - condition: template
   value_template: >
@@ -403,7 +522,8 @@ action:
         domain: mobile_app
         type: notify
         title: "Smart AC - 2nd Floor"
-        message: "Mode: {{ sf_target_hvac_mode }} | Temp: {{ sf_target_temp }}°C | Preset: {{ sf_target_preset }}"
+        message: >
+          Mode: {{ sf_target_hvac_mode }} | Temp: {{ sf_target_temp }}°C | Preset: {{ sf_target_preset }}{% if sf_defrost_protection_active %} | Defrost Protection Active ({{ sf_outdoor_temp }}°C){% endif %}
         data:
           url: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
           clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
@@ -429,7 +549,8 @@ action:
         domain: mobile_app
         type: notify
         title: "Smart AC - 4th Floor"
-        message: "Mode: {{ ff_target_hvac_mode }} | Temp: {{ ff_target_temp }}°C | Preset: {{ ff_target_preset }}"
+        message: >
+          Mode: {{ ff_target_hvac_mode }} | Temp: {{ ff_target_temp }}°C | Preset: {{ ff_target_preset }}{% if ff_defrost_protection_active %} | Defrost Protection Active ({{ ff_outdoor_temp }}°C){% endif %}
         data:
           url: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
           clickAction: '{{ var_dashboard_url if var_dashboard_url != "" else "/lovelace" }}'
