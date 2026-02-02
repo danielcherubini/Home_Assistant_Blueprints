@@ -768,7 +768,8 @@ action:
           {% if not var_dynamic_hysteresis_enabled or var_weather_entity == '' %}
             0.5
           {% else %}
-            {{ ((weather_outdoor_temp - var_hysteresis_extreme_temp) / (var_hysteresis_mild_temp - var_hysteresis_extreme_temp)) | min(1) | max(0) }}
+            {% set ratio = (weather_outdoor_temp - var_hysteresis_extreme_temp) / (var_hysteresis_mild_temp - var_hysteresis_extreme_temp) %}
+            {{ [[ratio, 1] | min, 0] | max }}
           {% endif %}
         # Effective hysteresis values
         effective_heating_hysteresis: >
