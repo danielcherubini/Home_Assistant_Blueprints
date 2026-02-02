@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v6.0 - Per-Unit Modes)
+  name: Smart AC Control Independent (v6.1 - Per-Unit Modes)
   description: >
     Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
     HVAC modes, presets, and defrost settings are all per-unit, allowing different configurations for each AC.
@@ -284,7 +284,7 @@ blueprint:
               sort: false
               custom_value: false
               multiple: false
-          default: Powerful
+          default: Normal
         second_floor_cool_preset:
           name: 2nd Floor Cool Preset
           description: The preset to use when 2nd floor needs cooling.
@@ -298,7 +298,7 @@ blueprint:
               sort: false
               custom_value: false
               multiple: false
-          default: Powerful
+          default: Normal
     third_floor:
       name: 3rd Floor
       icon: mdi:home-floor-2
