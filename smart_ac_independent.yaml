@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v6.1 - Per-Unit Modes)
+  name: Smart AC Control Independent (v6.2 - Per-Unit Modes)
   description: >
     Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
     HVAC modes, presets, and defrost settings are all per-unit, allowing different configurations for each AC.
@@ -542,6 +542,8 @@ action:
         var_active_defrost_cool_temp: !input active_defrost_cool_temp
         var_sf_outdoor_sensor_id: !input second_floor_outdoor_temp_sensor
         second_floor_ac_entity: !input second_floor_ac
+        var_sf_hvac_mode_helper_id: !input second_floor_current_hvac_mode_helper
+        var_sf_heat_mode: !input second_floor_heat_mode
         var_notification_device: !input notification_device
         var_dashboard_url: !input dashboard_url
     - condition: template
@@ -567,11 +569,13 @@ action:
         hvac_mode: cool
     - delay:
         minutes: "{{ var_active_defrost_cycle_minutes }}"
+    - variables:
+        sf_restored_mode: "{{ states(var_sf_hvac_mode_helper_id) if states(var_sf_hvac_mode_helper_id) not in ['unknown', 'unavailable', 'none', ''] else var_sf_heat_mode }}"
     - service: climate.set_hvac_mode
       target:
         entity_id: !input second_floor_ac
       data:
-        hvac_mode: heat
+        hvac_mode: "{{ sf_restored_mode }}"
     - if:
       - condition: template
         value_template: "{{ var_notification_device != '' }}"
@@ -580,7 +584,7 @@ action:
         domain: mobile_app
         type: notify
         title: "✅ Defrost Complete - 2nd Floor"
-        message: "Defrost cycle complete, resuming heat mode"
+        message: "Defrost cycle complete, resuming {{ sf_restored_mode }} mode"
         data:
           url: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
           clickAction: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
@@ -595,6 +599,8 @@ action:
         var_active_defrost_cool_temp: !input active_defrost_cool_temp
         var_ff_outdoor_sensor_id: !input fourth_floor_outdoor_temp_sensor
         fourth_floor_ac_entity: !input fourth_floor_ac
+        var_ff_hvac_mode_helper_id: !input fourth_floor_current_hvac_mode_helper
+        var_ff_heat_mode: !input fourth_floor_heat_mode
         var_notification_device: !input notification_device
         var_dashboard_url: !input dashboard_url
     - condition: template
@@ -620,11 +626,13 @@ action:
         hvac_mode: cool
     - delay:
         minutes: "{{ var_active_defrost_cycle_minutes }}"
+    - variables:
+        ff_restored_mode: "{{ states(var_ff_hvac_mode_helper_id) if states(var_ff_hvac_mode_helper_id) not in ['unknown', 'unavailable', 'none', ''] else var_ff_heat_mode }}"
     - service: climate.set_hvac_mode
       target:
         entity_id: !input fourth_floor_ac
       data:
-        hvac_mode: heat
+        hvac_mode: "{{ ff_restored_mode }}"
     - if:
       - condition: template
         value_template: "{{ var_notification_device != '' }}"
@@ -633,7 +641,7 @@ action:
         domain: mobile_app
         type: notify
         title: "✅ Defrost Complete - 4th Floor"
-        message: "Defrost cycle complete, resuming heat mode"
+        message: "Defrost cycle complete, resuming {{ ff_restored_mode }} mode"
         data:
           url: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
           clickAction: "{{ var_dashboard_url if var_dashboard_url != '' else '/lovelace' }}"
