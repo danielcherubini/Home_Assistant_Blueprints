@@ -1,9 +1,9 @@
 blueprint:
-  name: Smart AC Control Independent (v5.1 - Per-Unit Defrost)
+  name: Smart AC Control Independent (v6.0 - Per-Unit Modes)
   description: >
     Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
-    Includes passive defrost protection (prevents fan_only switching when cold) and optional active defrost
-    intervention (forces cooling cycle when coil gets too cold for too long). Defrost settings are per-unit.
+    HVAC modes, presets, and defrost settings are all per-unit, allowing different configurations for each AC.
+    Includes passive defrost protection and optional active defrost intervention.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
@@ -97,106 +97,6 @@ blueprint:
               mode: slider
               unit_of_measurement: "°C"
           default: 16.0
-    hvac_modes:
-      name: HVAC Modes
-      icon: mdi:air-conditioner
-      collapsed: true
-      input:
-        comfort_mode:
-          name: Comfort Mode (HVAC)
-          description: The HVAC mode to use when in the comfort zone.
-          selector:
-            select:
-              options:
-              - auto
-              - heat_cool
-              - cool
-              - heat
-              - fan_only
-              - 'off'
-              sort: false
-              custom_value: false
-              multiple: false
-          default: fan_only
-        heat_mode:
-          name: Heat Mode (HVAC)
-          description: The HVAC mode to use when in the heating zone.
-          selector:
-            select:
-              options:
-              - auto
-              - heat_cool
-              - cool
-              - heat
-              - fan_only
-              - 'off'
-              sort: false
-              custom_value: false
-              multiple: false
-          default: heat
-        cool_mode:
-          name: Cool Mode (HVAC)
-          description: The HVAC mode to use when in the cooling zone.
-          selector:
-            select:
-              options:
-              - auto
-              - heat_cool
-              - cool
-              - heat
-              - fan_only
-              - 'off'
-              sort: false
-              custom_value: false
-              multiple: false
-          default: cool
-    ac_presets:
-      name: AC Presets
-      icon: mdi:tune
-      collapsed: true
-      input:
-        comfort_preset:
-          name: Comfort Preset
-          description: The preset to use when in the comfort zone.
-          selector:
-            select:
-              options:
-              - Normal
-              - Powerful
-              - Quiet
-              - 'off'
-              sort: false
-              custom_value: false
-              multiple: false
-          default: Normal
-        heat_preset:
-          name: Heat Preset
-          description: The preset to use when in the heating zone.
-          selector:
-            select:
-              options:
-              - Normal
-              - Powerful
-              - Quiet
-              - 'off'
-              sort: false
-              custom_value: false
-              multiple: false
-          default: Powerful
-        cool_preset:
-          name: Cool Preset
-          description: The preset to use when in the cooling zone.
-          selector:
-            select:
-              options:
-              - Normal
-              - Powerful
-              - Quiet
-              - 'off'
-              sort: false
-              custom_value: false
-              multiple: false
-          default: Powerful
     first_floor:
       name: 1st Floor
       icon: mdi:home-floor-1
@@ -309,6 +209,96 @@ blueprint:
           selector:
             boolean:
           default: false
+        second_floor_comfort_mode:
+          name: 2nd Floor Comfort Mode (HVAC)
+          description: The HVAC mode to use when 2nd floor is in the comfort zone.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: heat_cool
+        second_floor_heat_mode:
+          name: 2nd Floor Heat Mode (HVAC)
+          description: The HVAC mode to use when 2nd floor needs heating.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: heat_cool
+        second_floor_cool_mode:
+          name: 2nd Floor Cool Mode (HVAC)
+          description: The HVAC mode to use when 2nd floor needs cooling.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: cool
+        second_floor_comfort_preset:
+          name: 2nd Floor Comfort Preset
+          description: The preset to use when 2nd floor is in the comfort zone.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Normal
+        second_floor_heat_preset:
+          name: 2nd Floor Heat Preset
+          description: The preset to use when 2nd floor needs heating.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Powerful
+        second_floor_cool_preset:
+          name: 2nd Floor Cool Preset
+          description: The preset to use when 2nd floor needs cooling.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Powerful
     third_floor:
       name: 3rd Floor
       icon: mdi:home-floor-2
@@ -402,6 +392,96 @@ blueprint:
           selector:
             boolean:
           default: false
+        fourth_floor_comfort_mode:
+          name: 4th Floor Comfort Mode (HVAC)
+          description: The HVAC mode to use when 4th floor is in the comfort zone.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: fan_only
+        fourth_floor_heat_mode:
+          name: 4th Floor Heat Mode (HVAC)
+          description: The HVAC mode to use when 4th floor needs heating.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: heat
+        fourth_floor_cool_mode:
+          name: 4th Floor Cool Mode (HVAC)
+          description: The HVAC mode to use when 4th floor needs cooling.
+          selector:
+            select:
+              options:
+              - auto
+              - heat_cool
+              - cool
+              - heat
+              - fan_only
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: cool
+        fourth_floor_comfort_preset:
+          name: 4th Floor Comfort Preset
+          description: The preset to use when 4th floor is in the comfort zone.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Normal
+        fourth_floor_heat_preset:
+          name: 4th Floor Heat Preset
+          description: The preset to use when 4th floor needs heating.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Normal
+        fourth_floor_cool_preset:
+          name: 4th Floor Cool Preset
+          description: The preset to use when 4th floor needs cooling.
+          selector:
+            select:
+              options:
+              - Normal
+              - Powerful
+              - Quiet
+              - 'off'
+              sort: false
+              custom_value: false
+              multiple: false
+          default: Normal
     optional_settings:
       name: Optional Settings
       icon: mdi:bell-outline
@@ -580,14 +660,22 @@ action:
         bathroom_floor_heating_entity: !input bathroom_floor_heating
         first_floor_heating_entity: !input first_floor_heating
         dining_room_heating_entity: !input dining_room_heating
-        # HVAC modes
-        var_comfort_mode: !input comfort_mode
-        var_heat_mode: !input heat_mode
-        var_cool_mode: !input cool_mode
-        # Presets
-        var_comfort_preset: !input comfort_preset
-        var_heat_preset: !input heat_preset
-        var_cool_preset: !input cool_preset
+        # 2nd Floor HVAC modes
+        var_sf_comfort_mode: !input second_floor_comfort_mode
+        var_sf_heat_mode: !input second_floor_heat_mode
+        var_sf_cool_mode: !input second_floor_cool_mode
+        # 2nd Floor Presets
+        var_sf_comfort_preset: !input second_floor_comfort_preset
+        var_sf_heat_preset: !input second_floor_heat_preset
+        var_sf_cool_preset: !input second_floor_cool_preset
+        # 4th Floor HVAC modes
+        var_ff_comfort_mode: !input fourth_floor_comfort_mode
+        var_ff_heat_mode: !input fourth_floor_heat_mode
+        var_ff_cool_mode: !input fourth_floor_cool_mode
+        # 4th Floor Presets
+        var_ff_comfort_preset: !input fourth_floor_comfort_preset
+        var_ff_heat_preset: !input fourth_floor_heat_preset
+        var_ff_cool_preset: !input fourth_floor_cool_preset
         # Passive defrost protection (prevents fan_only switching) - per unit
         var_sf_defrost_enabled: !input second_floor_defrost_protection
         var_ff_defrost_enabled: !input fourth_floor_defrost_protection
@@ -624,27 +712,27 @@ action:
           {% set current_temp = states(var_second_floor_temp_sensor_id)|float(0) %}
           {% set base_target = states(var_comfort_temperature_id)|float(0) %}
           {% set target = base_target + var_second_floor_temp_diff|float(0) %}
-          {% if current_mode == var_heat_mode %}
+          {% if current_mode == var_sf_heat_mode %}
             {% if sf_defrost_protection_active %}
-              {{ var_heat_mode }}
+              {{ var_sf_heat_mode }}
             {% elif current_temp >= target %}
-              {{ var_comfort_mode }}
+              {{ var_sf_comfort_mode }}
             {% else %}
-              {{ var_heat_mode }}
+              {{ var_sf_heat_mode }}
             {% endif %}
-          {% elif current_mode == var_cool_mode %}
+          {% elif current_mode == var_sf_cool_mode %}
             {% if current_temp <= target %}
-              {{ var_comfort_mode }}
+              {{ var_sf_comfort_mode }}
             {% else %}
-              {{ var_cool_mode }}
+              {{ var_sf_cool_mode }}
             {% endif %}
           {% else %}
             {% if current_temp < (target - var_heating_hysteresis) %}
-              {{ var_heat_mode }}
+              {{ var_sf_heat_mode }}
             {% elif current_temp > (target + var_cooling_hysteresis) %}
-              {{ var_cool_mode }}
+              {{ var_sf_cool_mode }}
             {% else %}
-              {{ var_comfort_mode }}
+              {{ var_sf_comfort_mode }}
             {% endif %}
           {% endif %}
       alias: Determine 2nd Floor HVAC Mode
@@ -657,27 +745,27 @@ action:
           {% set current_temp = states(var_fourth_floor_temp_sensor_id)|float(0) %}
           {% set base_target = states(var_comfort_temperature_id)|float(0) %}
           {% set target = base_target + var_fourth_floor_temp_diff|float(0) %}
-          {% if current_mode == var_heat_mode %}
+          {% if current_mode == var_ff_heat_mode %}
             {% if ff_defrost_protection_active %}
-              {{ var_heat_mode }}
+              {{ var_ff_heat_mode }}
             {% elif current_temp >= target %}
-              {{ var_comfort_mode }}
+              {{ var_ff_comfort_mode }}
             {% else %}
-              {{ var_heat_mode }}
+              {{ var_ff_heat_mode }}
             {% endif %}
-          {% elif current_mode == var_cool_mode %}
+          {% elif current_mode == var_ff_cool_mode %}
             {% if current_temp <= target %}
-              {{ var_comfort_mode }}
+              {{ var_ff_comfort_mode }}
             {% else %}
-              {{ var_cool_mode }}
+              {{ var_ff_cool_mode }}
             {% endif %}
           {% else %}
             {% if current_temp < (target - var_heating_hysteresis) %}
-              {{ var_heat_mode }}
+              {{ var_ff_heat_mode }}
             {% elif current_temp > (target + var_cooling_hysteresis) %}
-              {{ var_cool_mode }}
+              {{ var_ff_cool_mode }}
             {% else %}
-              {{ var_comfort_mode }}
+              {{ var_ff_comfort_mode }}
             {% endif %}
           {% endif %}
       alias: Determine 4th Floor HVAC Mode
@@ -690,11 +778,11 @@ action:
     - variables:
         sf_previous_mode: '{{ states(var_sf_hvac_mode_helper_id) }}'
         ff_previous_mode: '{{ states(var_ff_hvac_mode_helper_id) }}'
-        sf_target_hvac_mode: '{% set mode = states(var_sf_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
-        sf_target_preset: '{% if sf_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif sf_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
+        sf_target_hvac_mode: '{% set mode = states(var_sf_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_sf_comfort_mode }}'
+        sf_target_preset: '{% if sf_target_hvac_mode == var_sf_heat_mode %}{{ var_sf_heat_preset }}{% elif sf_target_hvac_mode == var_sf_cool_mode %}{{ var_sf_cool_preset }}{% else %}{{ var_sf_comfort_preset }}{% endif %}'
         sf_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_second_floor_temp_diff) }}'
-        ff_target_hvac_mode: '{% set mode = states(var_ff_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_comfort_mode }}'
-        ff_target_preset: '{% if ff_target_hvac_mode == var_heat_mode %}{{ var_heat_preset }}{% elif ff_target_hvac_mode == var_cool_mode %}{{ var_cool_preset }}{% else %}{{ var_comfort_preset }}{% endif %}'
+        ff_target_hvac_mode: '{% set mode = states(var_ff_hvac_mode_helper_id) %}{{ mode if mode not in ["unknown", "unavailable", "none", ""] else var_ff_comfort_mode }}'
+        ff_target_preset: '{% if ff_target_hvac_mode == var_ff_heat_mode %}{{ var_ff_heat_preset }}{% elif ff_target_hvac_mode == var_ff_cool_mode %}{{ var_ff_cool_preset }}{% else %}{{ var_ff_comfort_preset }}{% endif %}'
         ff_target_temp: '{{ (states(var_comfort_temperature_id)|float(0) + var_fourth_floor_temp_diff) }}'
         sf_mode_changed: '{{ sf_previous_mode not in ["unknown", "unavailable", "none", ""] and sf_target_hvac_mode != sf_previous_mode }}'
         ff_mode_changed: '{{ ff_previous_mode not in ["unknown", "unavailable", "none", ""] and ff_target_hvac_mode != ff_previous_mode }}'
