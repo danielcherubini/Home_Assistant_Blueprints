@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v6.5 - Mode Hold Time)
+  name: Smart AC Control Independent (v6.6 - Mode Hold Safety)
   description: >
     Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
     HVAC modes, presets, and defrost settings are all per-unit, allowing different configurations for each AC.
@@ -886,7 +886,7 @@ action:
             {% if current_mode == var_sf_heat_mode %}
               {% if sf_defrost_protection_active %}
                 {{ var_sf_heat_mode }}
-              {% elif not sf_mode_hold_elapsed %}
+              {% elif not sf_mode_hold_elapsed and current_temp < (target + effective_cooling_hysteresis) %}
                 {{ var_sf_heat_mode }}
               {% elif current_temp >= target %}
                 {{ var_sf_comfort_mode }}
@@ -894,7 +894,7 @@ action:
                 {{ var_sf_heat_mode }}
               {% endif %}
             {% elif current_mode == var_sf_cool_mode %}
-              {% if not sf_mode_hold_elapsed %}
+              {% if not sf_mode_hold_elapsed and current_temp > (target - effective_heating_hysteresis) %}
                 {{ var_sf_cool_mode }}
               {% elif current_temp <= target %}
                 {{ var_sf_comfort_mode }}
@@ -927,7 +927,7 @@ action:
             {% if current_mode == var_ff_heat_mode %}
               {% if ff_defrost_protection_active %}
                 {{ var_ff_heat_mode }}
-              {% elif not ff_mode_hold_elapsed %}
+              {% elif not ff_mode_hold_elapsed and current_temp < (target + effective_cooling_hysteresis) %}
                 {{ var_ff_heat_mode }}
               {% elif current_temp >= target %}
                 {{ var_ff_comfort_mode }}
@@ -935,7 +935,7 @@ action:
                 {{ var_ff_heat_mode }}
               {% endif %}
             {% elif current_mode == var_ff_cool_mode %}
-              {% if not ff_mode_hold_elapsed %}
+              {% if not ff_mode_hold_elapsed and current_temp > (target - effective_heating_hysteresis) %}
                 {{ var_ff_cool_mode }}
               {% elif current_temp <= target %}
                 {{ var_ff_comfort_mode }}
