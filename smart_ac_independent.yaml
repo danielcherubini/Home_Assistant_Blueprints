@@ -1,11 +1,11 @@
 blueprint:
-  name: Smart AC Control Independent (v6.4 - Mode Control Toggle)
+  name: Smart AC Control Independent (v6.5 - Mode Hold Time)
   description: >
     Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
     HVAC modes, presets, and defrost settings are all per-unit, allowing different configurations for each AC.
     Includes passive defrost protection, optional active defrost intervention, dynamic hysteresis
-    that scales based on outdoor temperature, and per-unit mode control toggle (when disabled, only
-    sets temperature target like floor heaters).
+    that scales based on outdoor temperature, per-unit mode control toggle (when disabled, only
+    sets temperature target like floor heaters), and minimum mode hold time to reduce compressor cycling.
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
