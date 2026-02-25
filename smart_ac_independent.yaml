@@ -42,6 +42,11 @@ blueprint:
               step: 0.5
               mode: slider
           default: 1.0
+    defrost_settings:
+      name: Defrost Protection
+      icon: mdi:snowflake-alert
+      collapsed: true
+      input:
         defrost_threshold_temp:
           name: Passive Defrost Protection Threshold (°C)
           description: >
@@ -99,6 +104,13 @@ blueprint:
               mode: slider
               unit_of_measurement: "°C"
           default: 16.0
+    dynamic_hysteresis:
+      name: Dynamic Hysteresis
+      icon: mdi:thermometer-auto
+      collapsed: true
+      description: >
+        Scale hysteresis based on outdoor temperature (requires weather entity).
+      input:
         weather_entity:
           name: Weather Entity
           description: Used for outdoor temperature in dynamic hysteresis calculation.
@@ -172,6 +184,7 @@ blueprint:
               max: 5.0
               step: 0.1
               unit_of_measurement: "°C"
+    # Per-Floor Settings
     first_floor:
       name: 1st Floor
       icon: mdi:home-floor-1
