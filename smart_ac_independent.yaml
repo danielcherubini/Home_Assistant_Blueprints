@@ -42,6 +42,19 @@ blueprint:
               step: 0.5
               mode: slider
           default: 1.0
+        min_mode_hold_minutes:
+          name: Minimum Mode Hold Time (minutes)
+          description: >
+            Minimum time to stay in an active mode (heat/cool) before switching back to comfort.
+            Prevents rapid compressor cycling. Set to 0 to disable. Panasonic AUTO mode uses ~10 min internally.
+          selector:
+            number:
+              min: 0
+              max: 30
+              step: 1
+              mode: slider
+              unit_of_measurement: "min"
+          default: 10
     defrost_settings:
       name: Defrost Protection
       icon: mdi:snowflake-alert
@@ -808,6 +821,7 @@ action:
         # Mode control per unit
         var_sf_mode_control: !input second_floor_mode_control
         var_ff_mode_control: !input fourth_floor_mode_control
+        var_min_mode_hold_minutes: !input min_mode_hold_minutes
         # 2nd Floor HVAC modes
         var_sf_comfort_mode: !input second_floor_comfort_mode
         var_sf_heat_mode: !input second_floor_heat_mode
@@ -851,6 +865,11 @@ action:
           {{ states(var_ff_outdoor_sensor_id)|float(99) if ff_outdoor_temp_available else 99 }}
         ff_defrost_protection_active: >
           {{ var_ff_defrost_enabled and ff_outdoor_temp_available and ff_outdoor_temp < var_defrost_threshold }}
+        # Mode hold time - prevents rapid cycling between active modes and comfort
+        sf_mode_hold_elapsed: >
+          {{ ((as_timestamp(now()) - as_timestamp(states[var_sf_hvac_mode_helper_id].last_changed)) / 60) | default(999) >= var_min_mode_hold_minutes }}
+        ff_mode_hold_elapsed: >
+          {{ ((as_timestamp(now()) - as_timestamp(states[var_ff_hvac_mode_helper_id].last_changed)) / 60) | default(999) >= var_min_mode_hold_minutes }}
     - if:
       - condition: template
         value_template: "{{ var_sf_mode_control }}"
@@ -867,13 +886,17 @@ action:
             {% if current_mode == var_sf_heat_mode %}
               {% if sf_defrost_protection_active %}
                 {{ var_sf_heat_mode }}
+              {% elif not sf_mode_hold_elapsed %}
+                {{ var_sf_heat_mode }}
               {% elif current_temp >= target %}
                 {{ var_sf_comfort_mode }}
               {% else %}
                 {{ var_sf_heat_mode }}
               {% endif %}
             {% elif current_mode == var_sf_cool_mode %}
-              {% if current_temp <= target %}
+              {% if not sf_mode_hold_elapsed %}
+                {{ var_sf_cool_mode }}
+              {% elif current_temp <= target %}
                 {{ var_sf_comfort_mode }}
               {% else %}
                 {{ var_sf_cool_mode }}
@@ -904,13 +927,17 @@ action:
             {% if current_mode == var_ff_heat_mode %}
               {% if ff_defrost_protection_active %}
                 {{ var_ff_heat_mode }}
+              {% elif not ff_mode_hold_elapsed %}
+                {{ var_ff_heat_mode }}
               {% elif current_temp >= target %}
                 {{ var_ff_comfort_mode }}
               {% else %}
                 {{ var_ff_heat_mode }}
               {% endif %}
             {% elif current_mode == var_ff_cool_mode %}
-              {% if current_temp <= target %}
+              {% if not ff_mode_hold_elapsed %}
+                {{ var_ff_cool_mode }}
+              {% elif current_temp <= target %}
                 {{ var_ff_comfort_mode }}
               {% else %}
                 {{ var_ff_cool_mode }}
