@@ -538,7 +538,7 @@ action:
                                   value: "general"
                             - if:
                                   - condition: template
-                                    value_template: "{{ notification_device_id != '' }}"
+                                    value_template: "{{ notification_device != '' }}"
                               then:
                                   - device_id: !input notification_device
                                     domain: mobile_app
@@ -556,7 +556,7 @@ action:
                               entity_id: !input humidity_control_switch
                               state: "on"
                             - condition: template
-                              value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance'] }}"
+                              value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance', 'bathroom', 'fourth_floor'] }}"
                         sequence:
                             - service: switch.turn_off
                               target:
@@ -568,7 +568,7 @@ action:
                                   value: "idle"
                             - if:
                                   - condition: template
-                                    value_template: "{{ notification_device_id != '' }}"
+                                    value_template: "{{ notification_device != '' }}"
                               then:
                                   - device_id: !input notification_device
                                     domain: mobile_app
