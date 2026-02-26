@@ -1,5 +1,5 @@
 blueprint:
-  name: Smart AC Control Independent (v6.6 - Mode Hold Safety)
+  name: Smart AC Control Independent (v6.7 - Temperature Limits)
   description: >
     Automatically adjusts AC based on individual floor temperatures. Each floor operates independently.
     HVAC modes, presets, and defrost settings are all per-unit, allowing different configurations for each AC.
@@ -9,6 +9,86 @@ blueprint:
   domain: automation
   source_url: https://github.com/danielcherubini/Home_Assistant_Blueprints/blob/main/smart_ac_independent.yaml
   input:
+    temperature_offsets:
+      name: Temperature Offsets
+      icon: mdi:thermometer
+      input:
+        # 1st Floor
+        first_floor_heating_offset:
+          name: 1st Floor Heating Offset (°C)
+          description: Temperature offset for first floor heating relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: -7.0
+        first_floor_heating_max_temp:
+          name: 1st Floor Heating Max Temperature (°C)
+          description: Maximum temperature that can be set on the first floor heating. Set to 0 to disable.
+          selector:
+            number:
+              min: 0
+              max: 35
+              step: 0.5
+              mode: slider
+              unit_of_measurement: "°C"
+          default: 0
+        # 2nd Floor
+        second_floor_temperature_difference:
+          name: 2nd Floor AC Offset (°C)
+          description: Temperature offset for the 2nd floor AC target relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: 0.0
+        bathroom_floor_heating_offset:
+          name: 2nd Floor Bathroom Heating Offset (°C)
+          description: Temperature offset for bathroom floor heating relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: -1.0
+        bathroom_floor_heating_max_temp:
+          name: 2nd Floor Bathroom Heating Max Temperature (°C)
+          description: Maximum temperature that can be set on the bathroom floor heating. Set to 0 to disable.
+          selector:
+            number:
+              min: 0
+              max: 35
+              step: 0.5
+              mode: slider
+              unit_of_measurement: "°C"
+          default: 0
+        # 3rd Floor
+        dining_room_heating_offset:
+          name: 3rd Floor Dining Room Heating Offset (°C)
+          description: Temperature offset for dining room heating relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: 0.0
+        # 4th Floor
+        fourth_floor_temperature_difference:
+          name: 4th Floor AC Offset (°C)
+          description: Temperature offset for the 4th floor AC target relative to comfort temp.
+          selector:
+            number:
+              min: -10.0
+              max: 10.0
+              step: 0.5
+              mode: slider
+          default: -1.5
     core_settings:
       name: Core Settings
       icon: mdi:cog
@@ -211,16 +291,6 @@ blueprint:
               - climate
               multiple: false
           default: ""
-        first_floor_heating_offset:
-          name: First Floor Heating Offset (°C)
-          description: Temperature offset for first floor heating relative to comfort temp.
-          selector:
-            number:
-              min: -10.0
-              max: 10.0
-              step: 0.5
-              mode: slider
-          default: -7.0
     second_floor:
       name: 2nd Floor
       icon: mdi:home-floor-2
@@ -253,17 +323,6 @@ blueprint:
               - input_text
               multiple: false
           default: input_text.second_floor_ac_hvac_mode
-        second_floor_temperature_difference:
-          name: 2nd Floor Temperature Difference (°C)
-          description: Temperature difference for the 2nd floor target relative to comfort
-            temp.
-          selector:
-            number:
-              min: -10.0
-              max: 10.0
-              step: 0.5
-              mode: slider
-          default: 0.0
         second_floor_mode_control:
           name: 2nd Floor Mode Control
           description: >
@@ -281,16 +340,6 @@ blueprint:
               - climate
               multiple: false
           default: ""
-        bathroom_floor_heating_offset:
-          name: Bathroom Floor Heating Offset (°C)
-          description: Temperature offset for bathroom floor heating relative to comfort temp.
-          selector:
-            number:
-              min: -10.0
-              max: 10.0
-              step: 0.5
-              mode: slider
-          default: -1.0
         second_floor_outdoor_temp_sensor:
           name: 2nd Floor Outdoor Temperature Sensor
           description: External temperature sensor on the 2nd floor heat pump unit. Used for defrost protection.
@@ -421,16 +470,6 @@ blueprint:
               - climate
               multiple: false
           default: ""
-        dining_room_heating_offset:
-          name: Dining Room Heating Offset (°C)
-          description: Temperature offset for dining room heating relative to comfort temp.
-          selector:
-            number:
-              min: -10.0
-              max: 10.0
-              step: 0.5
-              mode: slider
-          default: 0.0
     fourth_floor:
       name: 4th Floor
       icon: mdi:home-floor-3
@@ -453,17 +492,6 @@ blueprint:
               device_class:
               - temperature
               multiple: false
-        fourth_floor_temperature_difference:
-          name: 4th Floor Temperature Difference (°C)
-          description: Temperature difference for the 4th floor target relative to comfort
-            temp.
-          selector:
-            number:
-              min: -10.0
-              max: 10.0
-              step: 0.5
-              mode: slider
-          default: -1.5
         fourth_floor_mode_control:
           name: 4th Floor Mode Control
           description: >
@@ -813,7 +841,9 @@ action:
         var_second_floor_temp_diff: !input second_floor_temperature_difference
         var_fourth_floor_temp_diff: !input fourth_floor_temperature_difference
         var_bathroom_floor_heating_offset: !input bathroom_floor_heating_offset
+        var_bathroom_floor_heating_max_temp: !input bathroom_floor_heating_max_temp
         var_first_floor_heating_offset: !input first_floor_heating_offset
+        var_first_floor_heating_max_temp: !input first_floor_heating_max_temp
         var_dining_room_heating_offset: !input dining_room_heating_offset
         bathroom_floor_heating_entity: !input bathroom_floor_heating
         first_floor_heating_entity: !input first_floor_heating
@@ -1060,7 +1090,9 @@ action:
           target:
             entity_id: !input bathroom_floor_heating
           data:
-            temperature: '{{ (states(var_comfort_temperature_id)|float(0) + var_bathroom_floor_heating_offset)|int }}'
+            temperature: >
+              {% set temp = (states(var_comfort_temperature_id)|float(0) + var_bathroom_floor_heating_offset)|int %}
+              {{ [temp, var_bathroom_floor_heating_max_temp|int]|min if var_bathroom_floor_heating_max_temp|int > 0 else temp }}
           alias: "Set Bathroom Floor Heating Temperature"
       - sequence:
         - condition: template
@@ -1070,7 +1102,9 @@ action:
           target:
             entity_id: !input first_floor_heating
           data:
-            temperature: '{{ (states(var_comfort_temperature_id)|float(0) + var_first_floor_heating_offset)|int }}'
+            temperature: >
+              {% set temp = (states(var_comfort_temperature_id)|float(0) + var_first_floor_heating_offset)|int %}
+              {{ [temp, var_first_floor_heating_max_temp|int]|min if var_first_floor_heating_max_temp|int > 0 else temp }}
           alias: "Set First Floor Heating Temperature"
       - sequence:
         - condition: template
