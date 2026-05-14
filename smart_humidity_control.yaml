@@ -751,6 +751,7 @@ action:
                                     title: "Smart Humidity"
                                     message: "Humidity Control - On (House: {{ house_humidity }}%)"
                                     data:
+                                        url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                                         clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
                       # Turn off dehumidification - only if not in priority mode
@@ -781,6 +782,7 @@ action:
                                     title: "Smart Humidity"
                                     message: "Humidity Control - Off (House: {{ house_humidity }}%)"
                                     data:
+                                        url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                                         clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
 mode: restart
