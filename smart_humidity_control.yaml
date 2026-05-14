@@ -102,14 +102,14 @@ blueprint:
 
         schedule_start_time:
             name: Schedule Start Time
-            description: Time of day to turn humidity control ON (schedule must be enabled). Supports overnight windows (e.g., 22:00 start, 06:00 end).
+            description: Time of day to turn humidity control ON (schedule must be enabled). Supports overnight windows (e.g., 22:00 start, 06:00 end). Changing this time requires reloading the automation.
             default: "06:00:00"
             selector:
                 time:
 
         schedule_end_time:
             name: Schedule End Time
-            description: Time of day to turn humidity control OFF (schedule must be enabled). Supports overnight windows (e.g., 22:00 start, 06:00 end).
+            description: Time of day to turn humidity control OFF (schedule must be enabled). Supports overnight windows (e.g., 22:00 start, 06:00 end). Changing this time requires reloading the automation.
             default: "10:00:00"
             selector:
                 time:
