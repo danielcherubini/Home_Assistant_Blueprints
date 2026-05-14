@@ -1,8 +1,9 @@
 blueprint:
-    name: Smart Humidity Control (v1.8)
+    name: Smart Humidity Control (v1.9)
     description: >
         Automatically control humidity in your home based on house mean humidity.
-        Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets.
+        Includes special handling for bathroom and 4th floor humidity spikes with configurable offsets,
+        and a scheduled daily time window override.
     domain: automation
     source_url: https://github.com/danielcherubini/Home-Assistant-Blueprints/blob/main/smart_humidity_control.yaml
 
@@ -87,6 +88,31 @@ blueprint:
             default: ""
             selector:
                 text:
+
+        schedule_enable_switch:
+            name: Schedule Enable Switch (Optional)
+            description: Switch or input boolean that enables/disables the scheduled time window. When ON, the schedule is active. When OFF or not configured, the schedule is ignored.
+            default: ""
+            selector:
+                entity:
+                    filter:
+                        - domain:
+                              - switch
+                              - input_boolean
+
+        schedule_start_time:
+            name: Schedule Start Time
+            description: Time of day to turn humidity control ON (schedule must be enabled). Supports overnight windows (e.g., 22:00 start, 06:00 end).
+            default: "06:00:00"
+            selector:
+                time:
+
+        schedule_end_time:
+            name: Schedule End Time
+            description: Time of day to turn humidity control OFF (schedule must be enabled). Supports overnight windows (e.g., 22:00 start, 06:00 end).
+            default: "10:00:00"
+            selector:
+                time:
 
         # Thresholds
 
