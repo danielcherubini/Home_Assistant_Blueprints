@@ -345,12 +345,158 @@ action:
                             url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
                             clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
 
+          # Scheduled time window - turn ON
+          - conditions:
+                - condition: trigger
+                  id: schedule_on
+                - condition: template
+                  value_template: "{{ schedule_enabled }}"
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+            sequence:
+                - service: switch.turn_on
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "scheduled"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - On (Scheduled)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # Scheduled time window - turn OFF
+          - conditions:
+                - condition: trigger
+                  id: schedule_off
+                - condition: template
+                  value_template: "{{ schedule_enabled }}"
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+            sequence:
+                - service: switch.turn_off
+                  target:
+                      entity_id: !input humidity_control_switch
+                - service: input_text.set_value
+                  target:
+                      entity_id: !input mode_tracker
+                  data:
+                      value: "idle"
+                - if:
+                      - condition: template
+                        value_template: "{{ notification_device != '' }}"
+                  then:
+                      - device_id: !input notification_device
+                        domain: mobile_app
+                        type: notify
+                        title: "Smart Humidity"
+                        message: "Humidity Control - Off (Scheduled)"
+                        data:
+                            url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                            clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
+          # Schedule enable switch changed mid-window
+          - conditions:
+                - condition: trigger
+                  id: schedule_enable_change
+                - condition: template
+                  value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+            sequence:
+                - choose:
+                      # Schedule enabled and within window - turn ON
+                      - conditions:
+                            - condition: template
+                              value_template: "{{ schedule_enabled and within_schedule_window }}"
+                        sequence:
+                            - service: switch.turn_on
+                              target:
+                                  entity_id: !input humidity_control_switch
+                            - service: input_text.set_value
+                              target:
+                                  entity_id: !input mode_tracker
+                              data:
+                                  value: "scheduled"
+                            - if:
+                                  - condition: template
+                                    value_template: "{{ notification_device != '' }}"
+                              then:
+                                  - device_id: !input notification_device
+                                    domain: mobile_app
+                                    type: notify
+                                    title: "Smart Humidity"
+                                    message: "Humidity Control - On (Schedule Enabled)"
+                                    data:
+                                        url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                                        clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                      # Schedule enabled but outside window - turn OFF
+                      - conditions:
+                            - condition: template
+                              value_template: "{{ schedule_enabled and not within_schedule_window }}"
+                        sequence:
+                            - service: switch.turn_off
+                              target:
+                                  entity_id: !input humidity_control_switch
+                            - service: input_text.set_value
+                              target:
+                                  entity_id: !input mode_tracker
+                              data:
+                                  value: "idle"
+                            - if:
+                                  - condition: template
+                                    value_template: "{{ notification_device != '' }}"
+                              then:
+                                  - device_id: !input notification_device
+                                    domain: mobile_app
+                                    type: notify
+                                    title: "Smart Humidity"
+                                    message: "Humidity Control - Off (Outside Schedule Window)"
+                                    data:
+                                        url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                                        clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                      # Schedule disabled - turn OFF (handles mid-window disable)
+                      - conditions:
+                            - condition: template
+                              value_template: "{{ not schedule_enabled }}"
+                        sequence:
+                            - service: switch.turn_off
+                              target:
+                                  entity_id: !input humidity_control_switch
+                            - service: input_text.set_value
+                              target:
+                                  entity_id: !input mode_tracker
+                              data:
+                                  value: "idle"
+                            - if:
+                                  - condition: template
+                                    value_template: "{{ notification_device != '' }}"
+                              then:
+                                  - device_id: !input notification_device
+                                    domain: mobile_app
+                                    type: notify
+                                    title: "Smart Humidity"
+                                    message: "Humidity Control - Off (Schedule Disabled)"
+                                    data:
+                                        url: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+                                        clickAction: "{{ dashboard_url if dashboard_url != '' else '/lovelace' }}"
+
           # Bathroom priority mode - turn on when exceeds threshold, off when reaches house mean
           - conditions:
                 - condition: trigger
                   id: humidity_change
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ not within_schedule_window }}"
                 - condition: template
                   value_template: "{{ house_humidity >= minimum_activation_threshold }}"
                 - condition: template
@@ -387,6 +533,8 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
+                  value_template: "{{ not within_schedule_window }}"
+                - condition: template
                   value_template: "{{ bathroom_humidity < house_humidity_min or bathroom_humidity <= ([house_humidity + bathroom_minimum_offset, house_humidity_min] | max) }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
@@ -421,6 +569,8 @@ action:
                   id: humidity_change
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ not within_schedule_window }}"
                 - condition: template
                   value_template: "{{ house_humidity >= minimum_activation_threshold }}"
                 - condition: template
@@ -457,6 +607,8 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
+                  value_template: "{{ not within_schedule_window }}"
+                - condition: template
                   value_template: "{{ fourth_floor_humidity < house_humidity_min or fourth_floor_humidity <= ([house_humidity + fourth_floor_minimum_offset, house_humidity_min] | max) }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
@@ -491,6 +643,8 @@ action:
                   id: humidity_change
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ not within_schedule_window }}"
                 - condition: template
                   value_template: "{{ house_humidity >= minimum_activation_threshold }}"
                 - condition: template
@@ -527,6 +681,8 @@ action:
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
                 - condition: template
+                  value_template: "{{ not within_schedule_window }}"
+                - condition: template
                   value_template: "{{ outdoor_weather != '' and house_humidity <= outdoor_balance_min_threshold }}"
                 - condition: state
                   entity_id: !input humidity_control_switch
@@ -561,6 +717,8 @@ action:
                   id: humidity_change
                 - condition: template
                   value_template: "{{ override_switch == '' or is_state(override_switch, 'off') }}"
+                - condition: template
+                  value_template: "{{ not within_schedule_window }}"
             sequence:
                 - choose:
                       # Turn on dehumidification
@@ -603,7 +761,7 @@ action:
                               entity_id: !input humidity_control_switch
                               state: "on"
                             - condition: template
-                              value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance', 'bathroom', 'fourth_floor'] }}"
+                              value_template: "{{ current_mode in ['general', 'idle', 'outdoor_balance', 'bathroom', 'fourth_floor', 'scheduled'] }}"
                         sequence:
                             - service: switch.turn_off
                               target:
