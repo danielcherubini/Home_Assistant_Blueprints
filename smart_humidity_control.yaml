@@ -245,6 +245,18 @@ variables:
     mode_tracker: !input mode_tracker
     notification_device: !input notification_device
     dashboard_url: !input dashboard_url
+    schedule_enable_switch: !input schedule_enable_switch
+    schedule_start_time: !input schedule_start_time
+    schedule_end_time: !input schedule_end_time
+    schedule_enabled: "{{ schedule_enable_switch != '' and is_state(schedule_enable_switch, 'on') }}"
+    within_schedule_window: >-
+      {{
+        schedule_enabled and
+        (
+          (schedule_start_time[:5] <= schedule_end_time[:5] and now().strftime('%H:%M') >= schedule_start_time[:5] and now().strftime('%H:%M') < schedule_end_time[:5]) or
+          (schedule_start_time[:5] > schedule_end_time[:5] and (now().strftime('%H:%M') >= schedule_start_time[:5] or now().strftime('%H:%M') < schedule_end_time[:5]))
+        )
+      }}
     house_humidity: "{{ states(house_humidity_sensor) | int(0) }}"
     bathroom_humidity: "{{ states(bathroom_humidity_sensor) | float(0) }}"
     fourth_floor_humidity: "{{ states(fourth_floor_humidity_sensor) | float(0) }}"
@@ -263,6 +275,15 @@ trigger:
     - platform: state
       entity_id: !input override_switch
       id: override_change
+    - platform: time
+      at: !input schedule_start_time
+      id: schedule_on
+    - platform: time
+      at: !input schedule_end_time
+      id: schedule_off
+    - platform: state
+      entity_id: !input schedule_enable_switch
+      id: schedule_enable_change
 
 condition: []
 
